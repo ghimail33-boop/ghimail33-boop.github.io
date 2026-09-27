@@ -27,9 +27,10 @@ export const ReportPrintModal: React.FC<ReportPrintModalProps> = ({
     try {
       setLoading(true);
       const res = await api.getInspectionReport(inspectionId);
-      setReport(res);
+      setReport(res && !res.error ? res : null);
     } catch (err) {
       console.error('Failed to load report packet:', err);
+      setReport(null);
     } finally {
       setLoading(false);
     }
@@ -112,7 +113,7 @@ export const ReportPrintModal: React.FC<ReportPrintModalProps> = ({
               <div className="animate-spin inline-block w-8 h-8 border-3 border-[#0f2c4d] border-t-transparent rounded-full" />
               <div className="mt-2 text-xs">प्रतिवेदन तयार गरिँदैछ...</div>
             </div>
-          ) : !report ? (
+          ) : !report || !report.inspection || !report.procurement ? (
             <div className="py-20 text-center text-red-600">
               प्रतिवेदन विवरण प्राप्त गर्न सकिएन।
             </div>

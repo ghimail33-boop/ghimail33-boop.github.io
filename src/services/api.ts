@@ -82,6 +82,68 @@ const getCurrentUserId = (): number | null => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const getUserFullName = async (userId?: number | null): Promise<string | null> => {
+  if (!userId) return null;
+
+  const { data, error } = await supabase
+    .from('users')
+    .select('full_name')
+    .eq('id', userId)
+    .maybeSingle();
+
+  if (error || !data) return null;
+  return data.full_name || null;
+};
+
+const getInspectionReportFallback = async (inspectionId: number): Promise<any> => {
+  const [inspectionResult, findingsResult] = await Promise.all([
+    supabase
+      .from('inspections')
+      .select('*, procurements(title, procurement_number, procurement_type, procurement_method, estimated_cost, contract_amount, contract_date, contractor_name, contract_completion_date, office_id, offices(name), provinces(name_ne), districts(name_ne), municipalities(name_ne)), users!lead_inspector_id(full_name), users!verified_by(full_name)')
+      .eq('id', inspectionId)
+      .maybeSingle(),
+    supabase
+      .from('findings')
+      .select('*')
+      .eq('inspection_id', inspectionId)
+      .order('id', { ascending: true })
+  ]);
+
+  if (inspectionResult.error) throw new Error(inspectionResult.error.message);
+  if (!inspectionResult.data) {
+    return { error: 'प्रतिवेदन फेला परेन।' };
+  }
+
+  const inspection = inspectionResult.data;
+  const procurement = inspection.procurements || {};
+  const leadInspectorName = await getUserFullName(inspection.lead_inspector_id);
+  const verifiedByName = await getUserFullName(inspection.verified_by);
+
+  return {
+    inspection: {
+      id: inspection.id,
+      status: inspection.status,
+      lead_inspector: leadInspectorName || 'ई. पुरुषोत्तम प्रसाद',
+      verified_by: verifiedByName || 'समीक्षक / निर्देशक',
+    },
+    procurement: {
+      title: procurement.title || '-',
+      office_name: procurement.offices?.name || '-',
+      district_name: procurement.districts?.name_ne || '-',
+      province_name: procurement.provinces?.name_ne || '-',
+      procurement_number: procurement.procurement_number || '-',
+      procurement_type: procurement.procurement_type || '-',
+      procurement_method: procurement.procurement_method || '-',
+      estimated_cost: Number(procurement.estimated_cost) || 0,
+      contract_amount: Number(procurement.contract_amount) || 0,
+      contractor_name: procurement.contractor_name || '-',
+      contract_date: procurement.contract_date || '-',
+      contract_completion_date: procurement.contract_completion_date || '-',
+    },
+    findings: findingsResult.data || [],
+  };
+};
+
 const getDashboardSummaryFallback = async (): Promise<DashboardSummary> => {
   const today = new Date().toISOString().slice(0, 10);
 
@@ -656,7 +718,22 @@ export const api = {
   },
 
   async getInspectionReport(inspectionId: number): Promise<any> {
-    return { error: 'Report generation not supported in frontend-only mode yet.' };
+    const shouldUseFallback = typeof window !== 'undefined' && /github\.io/i.test(window.location.hostname);
+
+    try {
+      if (shouldUseFallback || typeof window === 'undefined') {
+        return await getInspectionReportFallback(inspectionId);
+      }
+
+      const response = await fetch(`/api/reports/inspection/${inspectionId}`);
+      if (!response.ok) {
+        return await getInspectionReportFallback(inspectionId);
+      }
+
+      return response.json();
+    } catch (error) {
+      return await getInspectionReportFallback(inspectionId);
+    }
   },
 
   async getAuditLogs(params?: { action?: string; entity_type?: string }): Promise<AuditLog[]> {
