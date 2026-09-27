@@ -82,6 +82,153 @@ const getCurrentUserId = (): number | null => {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
 };
 
+const getDashboardSummaryFallback = async (): Promise<DashboardSummary> => {
+  const today = new Date().toISOString().slice(0, 10);
+
+  const [
+    totalProcurementsResult,
+    totalInspectionsResult,
+    totalFindingsResult,
+    totalStagesResult,
+    totalChecklistItemsResult,
+    overdueResult,
+    procurementValuesResult,
+    findingValuesResult,
+    complianceResult,
+    riskResult,
+    stageItemsResult,
+    findingsWithProcurementResult,
+  ] = await Promise.all([
+    supabase.from('procurements').select('*', { count: 'exact', head: true }),
+    supabase.from('inspections').select('*', { count: 'exact', head: true }),
+    supabase.from('findings').select('*', { count: 'exact', head: true }),
+    supabase.from('checklist_stages').select('*', { count: 'exact', head: true }),
+    supabase.from('checklist_items').select('*', { count: 'exact', head: true }).eq('is_active', true),
+    supabase.from('corrective_actions').select('*', { count: 'exact', head: true }).lt('deadline', today),
+    supabase.from('procurements').select('contract_amount'),
+    supabase.from('findings').select('estimated_financial_impact'),
+    supabase.from('inspection_checklist_results').select('compliance_status'),
+    supabase.from('findings').select('risk_level'),
+    supabase.from('checklist_items').select('id, stage_id, is_active'),
+    supabase.from('findings').select('id, finding_code, title, risk_level, estimated_financial_impact, deadline, procurement_id, procurements(title, offices(name))').order('id', { ascending: false }).limit(6),
+  ]);
+
+  const totalProcurements = totalProcurementsResult.count ?? 0;
+  const totalInspections = totalInspectionsResult.count ?? 0;
+  const totalFindings = totalFindingsResult.count ?? 0;
+  const totalStages = totalStagesResult.count ?? 0;
+  const totalChecklistItems = totalChecklistItemsResult.count ?? 0;
+
+  const totalContractVolume = (procurementValuesResult.data || []).reduce((sum, row) => sum + (Number(row.contract_amount) || 0), 0);
+  const totalFinancialImpact = (findingValuesResult.data || []).reduce((sum, row) => sum + (Number(row.estimated_financial_impact) || 0), 0);
+
+  const complianceCounts = new Map<string, number>();
+  (complianceResult.data || []).forEach((row) => {
+    const key = row.compliance_status || 'जाँच बाँकी';
+    complianceCounts.set(key, (complianceCounts.get(key) || 0) + 1);
+  });
+
+  const riskCounts = new Map<string, number>();
+  (riskResult.data || []).forEach((row) => {
+    const key = row.risk_level || 'मध्यम';
+    riskCounts.set(key, (riskCounts.get(key) || 0) + 1);
+  });
+
+  const stageItemCounts = new Map<number, number>();
+  (stageItemsResult.data || []).forEach((row) => {
+    if (row.is_active) {
+      const stageId = Number(row.stage_id);
+      stageItemCounts.set(stageId, (stageItemCounts.get(stageId) || 0) + 1);
+    }
+  });
+
+  const stageFindingCounts = new Map<number, number>();
+  const stageFinancialImpact = new Map<number, number>();
+  const stageLookup = new Map<number, { stage_number: number; title_ne: string; title_en: string }>();
+
+  const applyStageMap = (stageItems: any[]) => {
+    stageItems.forEach((item) => {
+      if (item.id) {
+        stageLookup.set(Number(item.id), { stage_number: Number(item.stage_number), title_ne: item.title_ne, title_en: item.title_en });
+      }
+    });
+  };
+
+  const stageRows = await supabase.from('checklist_stages').select('id, stage_number, title_ne, title_en');
+  if (!stageRows.error) {
+    applyStageMap(stageRows.data || [] as any[]);
+  }
+
+  const itemStageMap = new Map<number, number>();
+  (stageItemsResult.data || []).forEach((row) => {
+    itemStageMap.set(Number(row.id), Number(row.stage_id));
+  });
+
+  (stageItemsResult.data || []).forEach((row) => {
+    const stageId = Number(row.stage_id);
+    if (row.is_active) {
+      stageItemCounts.set(stageId, (stageItemCounts.get(stageId) || 0) + 1);
+    }
+  });
+
+  const findingsWithProcurement = findingsWithProcurementResult.data || [];
+  findingsWithProcurement.forEach((finding: any) => {
+    const stageId = itemStageMap.get(Number(finding.checklist_item_id));
+    if (!stageId) return;
+
+    stageFindingCounts.set(stageId, (stageFindingCounts.get(stageId) || 0) + 1);
+    stageFinancialImpact.set(stageId, (stageFinancialImpact.get(stageId) || 0) + (Number(finding.estimated_financial_impact) || 0));
+  });
+
+  const stageSummary = (stageRows.data || []).map((stage: any) => ({
+    stage_id: stage.id,
+    stage_number: Number(stage.stage_number),
+    title_ne: stage.title_ne,
+    title_en: stage.title_en,
+    items_count: stageItemCounts.get(Number(stage.id)) || 0,
+    findings_count: stageFindingCounts.get(Number(stage.id)) || 0,
+    financial_impact: stageFinancialImpact.get(Number(stage.id)) || 0,
+  }));
+
+  const alerts = (findingsWithProcurementResult.data || [])
+    .filter((finding: any) => finding.risk_level && ['उच्च', 'अत्यन्त उच्च'].includes(finding.risk_level) || finding.status === 'Corrective Action Required')
+    .slice(0, 6)
+    .map((finding: any) => ({
+      id: finding.id,
+      finding_code: finding.finding_code,
+      title: finding.title,
+      risk_level: finding.risk_level,
+      estimated_financial_impact: Number(finding.estimated_financial_impact) || 0,
+      deadline: finding.deadline,
+      procurement_title: finding.procurements?.title || '-',
+      office_name: finding.procurements?.offices?.name || '-',
+    }));
+
+  return {
+    kpis: {
+      total_procurements: totalProcurements,
+      total_inspections: totalInspections,
+      in_progress_inspections: 0,
+      verified_inspections: 0,
+      total_findings: totalFindings,
+      high_critical_findings: Array.from(riskCounts.entries())
+        .filter(([risk_level]) => ['उच्च', 'अत्यन्त उच्च'].includes(String(risk_level)))
+        .reduce((sum, [, count]) => sum + Number(count || 0), 0),
+      open_findings: 0,
+      overdue_corrective_actions: overdueResult.count ?? 0,
+      total_financial_impact: totalFinancialImpact,
+      total_contract_volume: totalContractVolume,
+      total_checklist_stages: totalStages,
+      total_checklist_items: totalChecklistItems,
+    },
+    compliance: Array.from(complianceCounts.entries()).map(([compliance_status, count]) => ({ compliance_status, count })),
+    risk: Array.from(riskCounts.entries()).map(([risk_level, count]) => ({ risk_level, count })),
+    stages: stageSummary,
+    provinces: [],
+    alerts,
+  } as DashboardSummary;
+};
+
 export const api = {
   async login(username: string, password: string): Promise<{ token: string; user: User }> {
     // Note: Since we are using standard Postgres without Supabase Auth for users table,
@@ -487,13 +634,25 @@ export const api = {
   },
 
   async getDashboardSummary(): Promise<DashboardSummary> {
-    const response = await fetch('/api/dashboard/summary');
-    if (!response.ok) {
-      const errorBody = await response.json().catch(() => ({}));
-      throw new Error(errorBody.error || 'Dashboard summary failed to load.');
+    const shouldUseFallback = typeof window !== 'undefined' && /github\.io/i.test(window.location.hostname);
+
+    if (shouldUseFallback) {
+      return getDashboardSummaryFallback();
     }
 
-    return response.json() as Promise<DashboardSummary>;
+    try {
+      const response = await fetch('/api/dashboard/summary');
+      if (response.ok) {
+        return response.json() as Promise<DashboardSummary>;
+      }
+      const errorBody = await response.json().catch(() => ({}));
+      if (response.status === 404) {
+        return getDashboardSummaryFallback();
+      }
+      throw new Error(errorBody.error || 'Dashboard summary failed to load.');
+    } catch (error) {
+      return getDashboardSummaryFallback();
+    }
   },
 
   async getInspectionReport(inspectionId: number): Promise<any> {
