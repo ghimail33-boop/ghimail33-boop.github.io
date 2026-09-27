@@ -9,14 +9,14 @@ export default defineConfig(() => {
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(import.meta.dirname, '.'),
       },
     },
     build: {
       rollupOptions: {
         input: {
-          main: path.resolve(__dirname, 'index.html'),
-          checklist: path.resolve(__dirname, 'checklist/index.html'),
+          main: path.resolve(import.meta.dirname, 'index.html'),
+          checklist: path.resolve(import.meta.dirname, 'checklist/index.html'),
         },
       },
     },
