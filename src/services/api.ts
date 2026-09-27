@@ -99,7 +99,7 @@ const getInspectionReportFallback = async (inspectionId: number): Promise<any> =
   const [inspectionResult, findingsResult] = await Promise.all([
     supabase
       .from('inspections')
-      .select('*, procurements(title, procurement_number, procurement_type, procurement_method, estimated_cost, contract_amount, contract_date, contractor_name, contract_completion_date, office_id, offices(name), provinces(name_ne), districts(name_ne), municipalities(name_ne)), users!lead_inspector_id(full_name), users!verified_by(full_name)')
+      .select('*, procurements(title, procurement_number, procurement_type, procurement_method, estimated_cost, contract_amount, contract_date, contractor_name, contract_completion_date, office_id, offices(name), provinces(name_ne), districts(name_ne), municipalities(name_ne))')
       .eq('id', inspectionId)
       .maybeSingle(),
     supabase
