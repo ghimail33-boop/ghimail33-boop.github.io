@@ -1,6 +1,51 @@
 import { supabase } from './supabase';
 import { User, Province, District, Municipality, Ministry, Office, FiscalYear, Procurement, ChecklistStage, ChecklistItem, Inspection, InspectionChecklistResult, Finding, CorrectiveAction, EvidenceFile, AuditLog, DashboardSummary } from '../types';
 
+const stripDisplayFields = <T extends Record<string, any>>(record: T) => {
+  const {
+    office_name,
+    ministry_name,
+    province_name,
+    district_name,
+    municipality_name,
+    fiscal_year_name,
+    ...dbRecord
+  } = record as Record<string, any>;
+
+  return dbRecord as T;
+};
+
+const ensureOfficeId = async (proc: Partial<Procurement>): Promise<Partial<Procurement>> => {
+  const nextProc = { ...proc };
+  const officeName = (nextProc.office_name || '').trim();
+
+  if (!nextProc.office_id && officeName) {
+    const { data: officeMatches, error: officeLookupError } = await supabase
+      .from('offices')
+      .select('id')
+      .ilike('name', officeName)
+      .limit(1);
+
+    if (officeLookupError) throw new Error(officeLookupError.message);
+
+    if (officeMatches && officeMatches.length > 0) {
+      nextProc.office_id = officeMatches[0].id;
+    } else {
+      const { data: createdOffice, error: officeCreateError } = await supabase
+        .from('offices')
+        .insert([{ name: officeName, is_active: true }])
+        .select('id')
+        .single();
+
+      if (officeCreateError) throw new Error(officeCreateError.message);
+      nextProc.office_id = createdOffice.id;
+    }
+  }
+
+  delete (nextProc as any).office_name;
+  return nextProc;
+};
+
 export const api = {
   async login(username: string, password: string): Promise<{ token: string; user: User }> {
     // Note: Since we are using standard Postgres without Supabase Auth for users table,
@@ -114,13 +159,17 @@ export const api = {
   },
 
   async createProcurement(proc: Partial<Procurement>): Promise<Procurement> {
-    const { data, error } = await supabase.from('procurements').insert([proc]).select().single();
+    const resolved = await ensureOfficeId(proc);
+    const cleaned = stripDisplayFields(resolved);
+    const { data, error } = await supabase.from('procurements').insert([cleaned]).select().single();
     if (error) throw new Error(error.message);
     return data as Procurement;
   },
 
   async updateProcurement(id: number, proc: Partial<Procurement>): Promise<Procurement> {
-    const { data, error } = await supabase.from('procurements').update(proc).eq('id', id).select().single();
+    const resolved = await ensureOfficeId(proc);
+    const cleaned = stripDisplayFields(resolved);
+    const { data, error } = await supabase.from('procurements').update(cleaned).eq('id', id).select().single();
     if (error) throw new Error(error.message);
     return data as Procurement;
   },
