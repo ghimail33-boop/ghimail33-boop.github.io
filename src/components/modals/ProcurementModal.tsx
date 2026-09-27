@@ -145,8 +145,10 @@ export const ProcurementModal: React.FC<ProcurementModalProps> = ({
         contract_amount: parseFloat(contractAmount) || 0,
         contract_number: contractNumber,
         contractor_name: contractorName,
-        contract_date: contractDate,
-        contract_completion_date: contractCompletionDate,
+        contract_date: contractDate || undefined,
+        contract_start_date: contractDate || undefined,
+        contract_completion_date: contractCompletionDate || undefined,
+        current_status: 'संचालनमा',
         lead_inspector: leadInspector,
         inspection_team: inspectionTeam,
       });

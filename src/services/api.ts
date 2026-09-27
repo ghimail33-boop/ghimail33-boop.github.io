@@ -74,6 +74,14 @@ const generateProcurementIdCode = async (fiscalYearId?: number): Promise<string>
   return `NVC-PROC-${fiscalYearCode}-${String(sequence).padStart(3, '0')}`;
 };
 
+const getCurrentUserId = (): number | null => {
+  const token = localStorage.getItem('nvc_token');
+  if (!token) return null;
+
+  const parsed = Number(token);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : null;
+};
+
 export const api = {
   async login(username: string, password: string): Promise<{ token: string; user: User }> {
     // Note: Since we are using standard Postgres without Supabase Auth for users table,
@@ -190,22 +198,38 @@ export const api = {
     const resolved = await ensureOfficeId(proc);
     const cleaned = stripDisplayFields(resolved);
     const procurement_id_code = cleaned.procurement_id_code || await generateProcurementIdCode(cleaned.fiscal_year_id);
+    const currentUserId = getCurrentUserId();
+    const procurementPayload: any = {
+      ...cleaned,
+      procurement_id_code,
+      created_by: (cleaned as any).created_by ?? currentUserId ?? null,
+      contract_start_date: cleaned.contract_start_date ?? cleaned.contract_date ?? null,
+      contract_date: cleaned.contract_date ?? cleaned.contract_start_date ?? null,
+      current_status: cleaned.current_status ?? 'संचालनमा',
+      lead_inspector: cleaned.lead_inspector ?? null,
+      inspection_team: cleaned.inspection_team ?? null,
+    };
+
     const { data, error } = await supabase
       .from('procurements')
-      .insert([{ ...cleaned, procurement_id_code }])
+      .insert([procurementPayload])
       .select()
       .single();
     if (error) throw new Error(error.message);
-    
-    // Automatically create a draft inspection for this procurement
+
     const procData = data as Procurement;
-    const inspection_code = `INSP-${procData.procurement_id_code.split('-').slice(-2).join('-')}`;
-    await supabase.from('inspections').insert([{
+    const inspectionCode = `INSP-${procData.procurement_id_code || Date.now().toString()}`;
+    const inspectionInsert = await supabase.from('inspections').insert([{
       procurement_id: procData.id,
-      inspection_code,
-      inspection_date: new Date().toISOString().split('T')[0],
-      status: 'Draft'
-    }]);
+      inspection_code: inspectionCode,
+      inspection_date: procData.contract_start_date || procData.contract_date || new Date().toISOString().split('T')[0],
+      status: 'Draft',
+      lead_inspector_id: currentUserId ?? null,
+      inspection_team: procData.inspection_team || procurementPayload.inspection_team || null,
+      created_by: currentUserId ?? null,
+    }]).select().single();
+
+    if (inspectionInsert.error) throw new Error(inspectionInsert.error.message);
 
     return procData;
   },
@@ -262,12 +286,19 @@ export const api = {
   },
 
   async getInspection(id: number): Promise<Inspection> {
-    const { data, error } = await supabase.from('inspections').select('*, procurements(title, procurement_id_code)').eq('id', id).single();
+    const { data, error } = await supabase
+      .from('inspections')
+      .select('*, procurements(title, procurement_id_code, contractor_name, contract_amount, offices(name))')
+      .eq('id', id)
+      .single();
     if (error) throw new Error(error.message);
     return {
       ...data,
       procurement_title: data.procurements?.title,
-      procurement_id_code: data.procurements?.procurement_id_code
+      procurement_id_code: data.procurements?.procurement_id_code,
+      office_name: data.procurements?.offices?.name,
+      contractor_name: data.procurements?.contractor_name,
+      contract_amount: data.procurements?.contract_amount,
     } as Inspection;
   },
 

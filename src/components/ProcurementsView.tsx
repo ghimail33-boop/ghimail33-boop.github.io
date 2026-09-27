@@ -415,7 +415,12 @@ export const ProcurementsView: React.FC<ProcurementsViewProps> = ({
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 bg-slate-50 p-4 rounded border border-slate-200/90 text-xs">
                 <div>
                   <span className="text-slate-500">सार्वजनिक निकाय:</span>
-                  <div className="font-bold text-slate-900 mt-0.5">{activeProcurement.office_name}</div>
+                  <input
+                    type="text"
+                    readOnly
+                    value={activeProcurement.office_name || ''}
+                    className="mt-1 w-full p-2 border border-slate-300 rounded focus:ring-1 focus:ring-[#0f2c4d] bg-white text-xs text-slate-800"
+                  />
                 </div>
                 <div>
                   <span className="text-slate-500">मन्त्रालय / विभाग:</span>
