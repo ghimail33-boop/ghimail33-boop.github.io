@@ -46,6 +46,34 @@ const ensureOfficeId = async (proc: Partial<Procurement>): Promise<Partial<Procu
   return nextProc;
 };
 
+const generateProcurementIdCode = async (fiscalYearId?: number): Promise<string> => {
+  let fiscalYearCode = new Date().getFullYear().toString();
+
+  if (fiscalYearId) {
+    const { data: fiscalYear, error: fiscalYearError } = await supabase
+      .from('fiscal_years')
+      .select('name')
+      .eq('id', fiscalYearId)
+      .maybeSingle();
+
+    if (!fiscalYearError && fiscalYear?.name) {
+      const match = fiscalYear.name.match(/\d{4}/);
+      if (match) {
+        fiscalYearCode = match[0];
+      }
+    }
+  }
+
+  const { count, error: countError } = await supabase
+    .from('procurements')
+    .select('*', { count: 'exact', head: true });
+
+  if (countError) throw new Error(countError.message);
+
+  const sequence = (count ?? 0) + 1;
+  return `NVC-PROC-${fiscalYearCode}-${String(sequence).padStart(3, '0')}`;
+};
+
 export const api = {
   async login(username: string, password: string): Promise<{ token: string; user: User }> {
     // Note: Since we are using standard Postgres without Supabase Auth for users table,
@@ -161,7 +189,12 @@ export const api = {
   async createProcurement(proc: Partial<Procurement>): Promise<Procurement> {
     const resolved = await ensureOfficeId(proc);
     const cleaned = stripDisplayFields(resolved);
-    const { data, error } = await supabase.from('procurements').insert([cleaned]).select().single();
+    const procurement_id_code = cleaned.procurement_id_code || await generateProcurementIdCode(cleaned.fiscal_year_id);
+    const { data, error } = await supabase
+      .from('procurements')
+      .insert([{ ...cleaned, procurement_id_code }])
+      .select()
+      .single();
     if (error) throw new Error(error.message);
     return data as Procurement;
   },
