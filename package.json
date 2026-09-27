@@ -5,10 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "tsx server.ts",
-    "build": "vite build && cp dist/index.html dist/404.html",
+    "build": "vite build && node -e \"const fs=require('fs'); fs.copyFileSync('dist/index.html','dist/404.html'); fs.writeFileSync('dist/.nojekyll','');\"",
     "start": "tsx server.ts",
     "preview": "vite preview",
-    "clean": "rm -rf dist server.js",
+    "clean": "node -e \"const fs=require('fs'); ['dist','server.js'].forEach((p)=>fs.rmSync(p,{recursive:true,force:true}));\"",
     "lint": "tsc --noEmit"
   },
   "dependencies": {
