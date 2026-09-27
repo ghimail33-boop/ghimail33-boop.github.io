@@ -1,0 +1,6 @@
+- Each route handler wraps its body in try/catch and returns a JSON `{ error: ... }` response with Nepali-language messages on failure, logging the stack via `console.error`.
+- Mutating endpoints chain `authenticate` and optionally `requireRole([...])` middleware before the handler body to enforce authentication and role-based authorization.
+- All database access goes through the shared `query(sql, params)` helper using positional `$N` parameters — no string interpolation of user input into SQL.
+- Every write operation (create/update/delete/upload) calls `logAudit(user.id, username, action, entity, entityId, oldRow, newRow, ip)` to produce an immutable audit trail.
+- Human-readable codes are generated server-side by counting existing rows and formatting with zero-padded sequences (e.g. `INSP-2081-NNN`, `PROC-NNN`, `EVD-*`).
+- Optional query filters are appended to a base SQL string by pushing values onto a shared `params[]` array and referencing them as `$${params.length}`, keeping parameter order consistent.

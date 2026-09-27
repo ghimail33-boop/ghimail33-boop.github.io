@@ -1,0 +1,6 @@
+- Cross-cutting concerns (auth state, toast notifications) are provided via React Context providers wrapped at the root of `App`.
+- All server communication is funneled through the singleton `api` object in `services/api.ts`, never via inline fetch calls in components.
+- Domain data models are defined once in `types/index.ts` and imported by both the API client and view components to keep request/response shapes consistent.
+- Tab-based navigation is driven by a single `currentTab` string state in `App`, with child views receiving filters via a `navParams` prop rather than URL routing.
+- Modal state is lifted to `App` and opened by child views through callback props, keeping modal lifecycle centralized.
+- API error responses are converted into thrown errors with Nepali-language messages, so callers handle failures uniformly.

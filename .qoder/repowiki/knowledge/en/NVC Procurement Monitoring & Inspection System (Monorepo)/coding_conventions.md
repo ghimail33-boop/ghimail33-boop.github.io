@@ -1,0 +1,3 @@
+- Domain functionality is split into per-resource route modules mounted under `/api/<resource>` in `server.ts`, keeping each business area isolated.
+- Database access goes through a shared `initDb()` layer that abstracts between the external PostgreSQL driver and the embedded PGlite instance, so routes never touch connection details directly.
+- Configuration is loaded from `.env` (with `.env.example` as the template) and consumed uniformly by both the server bootstrap and the database layer.

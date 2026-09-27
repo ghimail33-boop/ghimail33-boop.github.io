@@ -1,0 +1,5 @@
+- Components are exported as named functional components typed with `React.FC<Props>` and receive all mutable or view-specific data via props rather than internal state.
+- Navigation and menu items are configured declaratively as arrays of plain objects (e.g., `navItems`) containing id, label, sublabel, icon, and optional badge metadata instead of hard-coded branches.
+- Visual variants are mapped via lookup tables keyed by type (e.g., `TOAST_STYLES` mapping each `ToastType` to border, icon color, and icon component) rather than conditional rendering blocks.
+- User-facing labels use Nepali Devanagari script while code identifiers remain in English, keeping UI text localized but source readable.
+- Icons are imported individually from `lucide-react` and rendered inline within JSX rather than through a centralized icon registry.

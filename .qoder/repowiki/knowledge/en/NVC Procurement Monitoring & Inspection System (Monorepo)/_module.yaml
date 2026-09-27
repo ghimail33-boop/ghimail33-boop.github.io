@@ -1,0 +1,19 @@
+schema_version: 1
+module_path: ""
+title: NVC Procurement Monitoring & Inspection System (Monorepo)
+scope:
+    - README.md
+    - .gitignore
+    - index.html
+    - metadata.json
+    - package.json
+    - package-lock.json
+    - server.ts
+    - tsconfig.json
+    - vite.config.ts
+    - data/
+    - .env.example
+    - checklist.md
+source_files: []
+depends_on: []
+related_to: []

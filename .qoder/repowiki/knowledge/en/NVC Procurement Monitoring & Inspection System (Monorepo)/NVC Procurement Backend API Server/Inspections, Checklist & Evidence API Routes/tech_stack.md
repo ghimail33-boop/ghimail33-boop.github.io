@@ -1,0 +1,1 @@
+Express Router with TypeScript; PostgreSQL via a custom `query()` helper using positional parameters; Multer for disk-backed file uploads (25 MB limit, whitelisted extensions) stored under a process-relative `uploads/` directory.

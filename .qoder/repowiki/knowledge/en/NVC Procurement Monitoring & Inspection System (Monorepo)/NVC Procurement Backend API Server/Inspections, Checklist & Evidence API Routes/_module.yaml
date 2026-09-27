@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: backend_api/inspections_domain
+title: Inspections, Checklist & Evidence API Routes
+scope:
+    - server/routes/inspections.ts
+    - server/routes/checklists.ts
+    - server/routes/evidence.ts
+source_files: []
+depends_on: []
+related_to: []

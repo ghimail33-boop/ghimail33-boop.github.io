@@ -1,0 +1,1346 @@
+import { ProcurementStage, ProcurementMethod, ChecklistItem, ThresholdRule, ApprovalAuthorityBand, CitizenCharterItem, Notice } from '../types/procurement';
+
+export const PROCUREMENT_SOURCE_NOTE = 'कानूनी आधार: सार्वजनिक खरिद ऐन, २०६३ र सार्वजनिक खरिद नियमावली, २०६४।';
+
+const COMMON_METHOD_DOCUMENTS = [
+  'स्वीकृत खरिद माग, वार्षिक खरिद योजना र बजेट/स्रोत सुनिश्चितता',
+  'बजार अध्ययन, लागत अनुमान र अधिकारप्राप्त अधिकारीको स्वीकृति',
+  'विधि छनोटको लिखित औचित्य तथा स्वीकृत स्पेसिफिकेसन/कार्यविवरण',
+];
+
+const COMMON_BID_EVALUATION = [
+  'स्वीकृत कागजातमा पूर्वनिर्धारित eligibility, responsiveness र qualification मापदण्ड मात्र लागू गर्ने',
+  'प्राविधिक/व्यावसायिक परीक्षण र सारभूत प्रभावग्राहिता अभिलेख गर्ने',
+  'दर, कर, छुट र अन्य लागत कागजातमा तोकिएको भए मात्र समायोजन गरी तुलना गर्ने',
+  'मूल्याङ्कन प्रतिवेदन, कारणयुक्त निर्णय र स्वीकृति मिसिलमा राख्ने',
+];
+
+type ProcurementMethodInput = Omit<ProcurementMethod, 'requiredDocuments' | 'evaluationProcess'> &
+  Partial<Pick<ProcurementMethod, 'requiredDocuments' | 'evaluationProcess'>>;
+
+const defineMethod = (method: ProcurementMethodInput): ProcurementMethod => {
+  const methodData = method.id === 'sealed-quotation'
+    ? {
+        ...method,
+        specialConditions: [
+          'पहिलो सूचनामा तीनभन्दा कम दरभाउ वा कुनै दरभाउ नआए नियम ८४(३क) अनुसार दोस्रो सूचना प्रकाशन गर्ने; दोस्रो सूचनापछि प्राप्त प्रस्तावबाट छनोट गर्न सकिन्छ',
+          'कामलाई टुक्र्याएर दरभाउमा लैजान निषेध',
+        ],
+      }
+    : method.id === 'domestic-bidders-works'
+    ? {
+        ...method,
+        steps: [
+          'घरेलु-मात्र threshold र eligibility trigger लागू छ कि प्रमाणित गर्ने',
+          'NCB SBD/qualification criteria समान र non-restrictive बनाउने',
+          'लागू e-GP र publication माध्यममा खुला सूचना गर्ने',
+          'opening, qualification, responsiveness र price evaluation अभिलेख गर्ने',
+          'review, approval, security, contract award र disclosure पूरा गर्ने',
+        ],
+      }
+    : method.id === 'domestic-preference'
+    ? { ...method, thresholdLimit: 'नियमले अनुमति दिएको अवस्थामा मात्र; रकमगत सीमा होइन' }
+    : method;
+  const evaluationProcess = methodData.id === 'two-envelope'
+    ? [
+        'प्राविधिक नतिजा वित्तीय मूल्य नहेरी मूल्याङ्कन गरी अनुमोदन गर्ने',
+        'cutoff पार गर्ने प्रस्तावको वित्तीय खाम मात्र खोल्ने',
+        'RFP मा प्रकाशित विधिको दायरामा संयुक्त/वित्तीय ranking गर्ने',
+      ]
+    : methodData.evaluationProcess || COMMON_BID_EVALUATION;
+
+  return {
+    ...methodData,
+    requiredDocuments: [...COMMON_METHOD_DOCUMENTS, ...(methodData.requiredDocuments || [])],
+    evaluationProcess,
+  };
+};
+export const OFFICIAL_NOTICES: Notice[] = [
+  {
+    id: 'statutory-basis',
+    title: PROCUREMENT_SOURCE_NOTE,
+    date: '',
+    badge: 'कानूनी आधार',
+    isUrgent: false,
+  }
+];
+
+const PROCUREMENT_STAGES_SOURCE: ProcurementStage[] = [
+  {
+    id: 1,
+    stageNumber: 'चरण १',
+    title: 'खरिद योजना तर्जुमा (Procurement Planning)',
+    titleEn: 'Procurement Planning & Strategy',
+    shortDesc: 'कुल खरिदको गुरुयोजना र वार्षिक खरिद योजना तयारी तथा अख्तियारी प्राप्त अधिकारीबाट स्वीकृत गराउने।',
+    shortDescEn: 'Preparation of Master and Annual Procurement Plans and formal approval from the competent authority.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा ७ र नियमावली, २०६४ को नियम ७ र ८',
+    timeLimit: 'आर्थिक वर्ष सुरु हुनु अगावै वा बजेट विनियोजन भए लगत्तै १५ दिनभित्र',
+    keyResponsibilities: [
+      '१० करोड रुपैयाँभन्दा बढीको खरिदको लागि खरिद गुरुयोजना (Master Procurement Plan) तर्जुमा गर्ने',
+      'प्रत्येक सार्वजनिक निकायले अनिवार्य रूपमा वार्षिक खरिद योजना (Annual Procurement Plan) बनाउने',
+      'खरिदको प्याकेजिङ (Packaging) तथा टुक्राएर खरिद नगर्ने सुनिश्चितता गर्ने',
+      'बजेट तथा कार्यक्रमसँग तादम्यता कायम गरी विभागीय प्रमुख/कार्यालय प्रमुखबाट स्वीकृत गर्ने'
+    ],
+    mandatoryDocuments: [
+      'वार्षिक खरिद योजना (फारम अनुसूची-१)',
+      'खरिद गुरुयोजना (१० करोडभन्दा माथि भएमा)',
+      'स्वीकृत वार्षिक बजेट तथा कार्यक्रम प्रतिलिपि',
+      'खरिद एकाइ वा जिम्मेवार अधिकृत तोकिएको कार्यालय निर्णय'
+    ],
+    checkpoints: [
+      'के खरिद योजना आधिकारिक रूपमा स्वीकृत छ?',
+      'के खरिद सीमा छल्नका लागि कामलाई अस्वाभाविक रूपमा टुक्र्याइएको छैन?',
+      'खरिद विधि (खुला बोलपत्र, दरभाउ, सोझै आदि) स्पष्ट किटान गरिएको छ?'
+    ],
+    risksAndMitigation: 'खरिद योजना विना वा टुक्राएर गरिएका खरिदहरू महालेखा परीक्षकको लेखापरीक्षणमा बेरुजु ठहरिने उच्च जोखिम हुन्छ। अतः प्रत्येक खर्च शीर्षकमा योजनाबद्ध खरिद गर्नुपर्छ।',
+    officialAdvice: 'खरिद योजना स्वीकृत नगराई कुनै पनि खरिद प्रक्रिया अगाडि नबढाउनुहोस्। e-GP प्रणालीमा सिधै खरिद योजना अपलोड गर्नुहोस्।'
+  },
+  {
+    id: 2,
+    stageNumber: 'चरण २',
+    title: 'लागत अनुमान तयारी र स्वीकृति (Cost Estimation)',
+    titleEn: 'Preparation and Approval of Cost Estimate',
+    shortDesc: 'जिल्ला दररेट तथा नर्म्सका आधारमा वस्तुनिष्ठ लागत अनुमान तयार गरी सक्षम अधिकारीबाट स्वीकृत गराउने।',
+    shortDescEn: 'Preparing realistic and norm-based cost estimates based on district rates and getting approval.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा ५ र नियमावली, २०६४ को नियम ९ देखि १४ सम्म',
+    timeLimit: 'बोलपत्र आह्वान गर्नुपूर्व',
+    keyResponsibilities: [
+      'स्वीकृत नर्म्स तथा जिल्ला दररेट निर्धारण समितिले तोकेको दररेट प्रयोग गर्ने',
+      'विस्तृत स्पेसिफिकेसन (Detailed Specifications) र ड्रइङ/डिजाइन तयार गर्ने',
+      'कुनै खास ब्राण्ड, ट्रेडमार्क वा उत्पादकको नाम नतोक्ने (ऐनको दफा ४)',
+      'अधिकार प्राप्त अधिकारी (कार्यालय प्रमुख/महानिर्देशक/मन्त्रालय) बाट लागत अनुमान स्वीकृत गराउने'
+    ],
+    mandatoryDocuments: [
+      'लागत अनुमान सारांश तथा विस्तृत विश्लेषण (Rate Analysis)',
+      'जिल्ला दररेटको प्रमाणित प्रति',
+      'विस्तृत प्राविधिक स्पेसिफिकेसन (Technical Specifications)',
+      'डिजाइन, नक्सा वा कार्यविवरण (TOR)'
+    ],
+    checkpoints: [
+      'के लागत अनुमान चालु आ.व. को स्वीकृत जिल्ला दररेट बमोजिम छ?',
+      'के मूल्य अभिवृद्धि कर (VAT १३%) र कन्टिन्जेन्सी नियमअनुसार छुट्याइएको छ?',
+      'स्वीकृत गर्ने अधिकारीको आर्थिक अधिकार क्षेत्र (Financial Threshold) भित्र छ?'
+    ],
+    risksAndMitigation: 'अस्वाभाविक बढी वा कम लागत अनुमान गर्दा सार्वजनिक स्रोतको दुरुपयोग हुने वा ठेक्का कार्यान्वयनमा समस्या आउने गर्दछ।',
+    officialAdvice: 'स्पेसिफिकेसन तयार गर्दा बजारमा स्वस्थ प्रतिस्पर्धा हुने गरी खुला र स्पष्ट मापदण्ड राख्नुहोस्।'
+  },
+  {
+    id: 3,
+    stageNumber: 'चरण ३',
+    title: 'बोलपत्र कागजात तयारी (Bidding Documents)',
+    titleEn: 'Preparation of Standard Bidding Documents (SBD)',
+    shortDesc: 'PPMO द्वारा जारी मानक बोलपत्र कागजात (SBD) को प्रयोग गरी योग्यता र शर्तहरू निर्धारण गर्ने।',
+    shortDescEn: 'Formulation of bidding documents strictly using PPMO Standard Bidding Documents.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा १३ र नियमावली, २०६४ को नियम १८',
+    timeLimit: 'सूचना प्रकाशनपूर्व',
+    keyResponsibilities: [
+      'सार्वजनिक खरिद अनुगमन कार्यालय (PPMO) को पछिल्लो SBD ढाँचा प्रयोग गर्ने',
+      'लागू नियम/SBD अनुसार bid security, performance/advance security को रकम, माध्यम र validity स्पष्ट खुलाउने',
+      'योग्यताको आधार (Evaluation Criteria) वस्तुनिष्ठ र पूर्व-निर्धारित बनाउने',
+      'ठेक्का सम्झौताका सामान्य र विशेष शर्तहरू (GCC & SCC) तयार गर्ने'
+    ],
+    mandatoryDocuments: [
+      'स्वीकृत बोलपत्र कागजात (Bidding Document)',
+      'मूल्यांकनका आधार तथा मापदण्डहरू',
+      'बिल अफ क्वान्टिटी (BOQ) वा दरभाउ फारम',
+      'सम्झौताको मस्यौदा'
+    ],
+    checkpoints: [
+      'के PPMO द्वारा जारी आधिकारिक SBD नै प्रयोग गरिएको छ?',
+      'के योग्यताका आधारहरू कुनै निश्चित फर्मलाई लक्षित नगरी खुला राखिएको छ?',
+      'बोलपत्रको दस्तुर र धरौटी रकम नियमावली बमोजिम हिसाब गरिएको छ?'
+    ],
+    risksAndMitigation: 'कुनै खास बोलपत्रदातालाई अनुचित लाभ हुने गरी योग्यता तोकेमा उजुरी परी सम्पूर्ण खरिद प्रक्रिया रद्द हुनसक्छ।',
+    officialAdvice: 'PPMO को पछिल्लो संशोधन सहितको आधिकारिक SBD मात्र डाउनलोड गरी प्रयोग गर्नुहोस्।'
+  },
+  {
+    id: 4,
+    stageNumber: 'चरण ४',
+    title: 'बोलपत्र आह्वान तथा सूचना प्रकाशन (Notice Publication)',
+    titleEn: 'Invitation for Bids & Notice Publication',
+    shortDesc: 'राष्ट्रिय दैनिक पत्रिका तथा e-GP पोर्टलमा तोकिएको म्याद दिई सार्वजनिक सूचना प्रकाशन गर्ने।',
+    shortDescEn: 'Public invitation published in national daily newspapers and PPMO e-GP portal.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा १४ र नियमावली, २०६४ को नियम ३१, ३१क',
+    timeLimit: 'राष्ट्रिय स्तरको बोलपत्र: कम्तीमा ३० दिन (पुनरावलोकन पछिको भए २१ वा १५ दिन), सिलबन्दी दरभाउ: १५ दिन, अन्तर्राष्ट्रिय: ४५ दिन',
+    keyResponsibilities: [
+      'कम्तीमा एक राष्ट्रिय स्तरको दैनिक पत्रिकामा सूचना प्रकाशन गर्ने',
+      'सार्वजनिक खरिद अनुगमन कार्यालयको e-GP पोर्टलमा सूचना र कागजात अपलोड गर्ने',
+      'कार्यालयको सूचना पाटी तथा आधिकारिक वेबसाइटमा राख्ने',
+      'आवश्यक भएमा पूर्व-तयारी बैठक (Pre-Bid Meeting) को मिति र स्थान तोक्ने'
+    ],
+    mandatoryDocuments: [
+      'प्रकाशित राष्ट्रिय दैनिक पत्रिकाको कटिङ',
+      'e-GP पोर्टलमा प्रकाशित सूचनाको कन्फर्मेसन',
+      'सूचना स्वीकृत गरिएको टिप्पणी आदेश'
+    ],
+    checkpoints: [
+      'के तोकिएको दिन (३० दिन/१५ दिन) को पूर्ण म्याद दिइएको छ?',
+      'के पत्रिका र e-GP पोर्टलमा एकैसाथ सूचना प्रकाशन भएको छ?',
+      'कागजात खरिद गर्ने र दाखिला गर्ने अन्तिम मिति तथा समय स्पष्ट छ?'
+    ],
+    risksAndMitigation: 'म्याद नपुगी वा अपूरो सूचना प्रकाशन गरेमा खरिद प्रक्रिया गैरकानूनी ठहरिन्छ।',
+    officialAdvice: 'सार्वजनिक विदा परेमा सो पछिको कार्यालय खुल्ने पहिलो दिन म्याद रहने व्यवस्थाबारे स्पष्ट सूचना उल्लेख गर्नुहोस्।'
+  },
+  {
+    id: 5,
+    stageNumber: 'चरण ५',
+    title: 'बोलपत्र दाखिला र खोल्ने कार्य (Bid Submission & Opening)',
+    titleEn: 'Bid Submission & Public Opening',
+    shortDesc: 'e-GP मार्फत प्राप्त बोलपत्रहरू तोकिएको मिति र समयमा बोलपत्रदाता वा उनका प्रतिनिधिको उपस्थितिमा खोल्ने।',
+    shortDescEn: 'Opening submitted bids via e-GP at the designated time in the presence of bidders.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा २२ र नियमावली, २०६४ को नियम ६२, ६३',
+    timeLimit: 'बोलपत्र दाखिला हुने अन्तिम समय समाप्त हुनासाथ सोही दिन',
+    keyResponsibilities: [
+      'तोकिएको अन्तिम समयपछि प्राप्त बोलपत्र दर्ता नगर्ने',
+      'उपस्थित बोलपत्रदाता वा प्रतिनिधिहरूको रोहवरमा बोलपत्र खोल्ने',
+      'बोलपत्र खोल्ने मुचुल्का (Opening Minutes) तयार गरी बोलपत्रदाताको नाम, कबुल अंक, छुट र धरौटी उल्लेख गर्ने',
+      'उपस्थित सबै अधिकारी तथा प्रतिनिधिहरूको हस्ताक्षर गराउने'
+    ],
+    mandatoryDocuments: [
+      'बोलपत्र खोल्ने आधिकारिक मुचुल्का (अनुसूची बमोजिम)',
+      'उपस्थिति पुस्तिका (Attendance Sheet)',
+      'बोलपत्र जमानत (Bid Security) प्रतिलिपिहरू'
+    ],
+    checkpoints: [
+      'के बोलपत्र दाखिला समय सकिए लगत्तै खोलियो?',
+      'के मुचुल्कामा प्रत्येक बोलपत्रको कबुल अंक र जमानत रकम स्पष्ट लेखिएको छ?',
+      'के e-GP प्रणालीको डिजिटल लकिङ प्रक्रिया पूर्ण पालना भएको छ?'
+    ],
+    risksAndMitigation: 'मुचुल्का तयार नगरी वा लुकाएर बोलपत्र खोल्नु गम्भीर आर्थिक अनुशासन उल्लंघन मानिन्छ।',
+    officialAdvice: 'खोल्ने क्रममा बोलपत्रको मूल्य वा छुटका कुनै पनि अंश छुटाउनु हुँदैन; तुरुन्त e-GP मा मुचुल्का अपलोड गर्नुहोस्।'
+  },
+  {
+    id: 6,
+    stageNumber: 'चरण ६',
+    title: 'बोलपत्र परीक्षण र मूल्यांकन (Bid Evaluation)',
+    titleEn: 'Examination and Evaluation of Bids',
+    shortDesc: 'मूल्यांकन समितिद्वारा प्राविधिक, वित्तीय र कानूनी परीक्षण गरी न्यूनतम मूल्यांकित सारभूत रूपमा प्रभावग्राही बोलपत्र छनोट गर्ने।',
+    shortDescEn: 'Detailed technical, legal and financial evaluation by the tender evaluation committee.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा २३, २५ र नियमावली, २०६४ को नियम ६४ देखि ६६ सम्म',
+    timeLimit: 'बोलपत्रको मान्य अवधि (Bid Validity Period) भित्रै',
+    keyResponsibilities: [
+      'सक्षम मूल्यांकन समिति (Evaluation Committee) गठन हुनुपर्ने',
+      'प्रारम्भिक परीक्षण (Completeness & Legal Eligibility) गर्ने',
+      'प्राविधिक स्पेसिफिकेसन र कार्यअनुभवको विस्तृत परीक्षण गर्ने',
+      'अंकगणितीय त्रुटी (Arithmetical Correction) सच्याउने',
+      'Front loading वा अस्वाभाविक कम दर (Unbalanced/Abnormally Low Bid) भएमा अतिरिक्त कार्यसम्पादन जमानत (Additional Performance Security) हिसाब गर्ने'
+    ],
+    mandatoryDocuments: [
+      'मूल्यांकन समितिको विस्तृत प्रतिवेदन (Evaluation Report)',
+      'अंकगणितीय परीक्षण तालिका',
+      'सारभूत रूपमा प्रभावग्राही ठहरिएका बोलपत्रहरूको तुलनात्मक तालिका (Comparative Chart)',
+      'सम्बन्धित प्राविधिक विज्ञको राय'
+    ],
+    checkpoints: [
+      'के बोलपत्र कागजातमा उल्लेखित मापदण्ड बाहेक नयाँ शर्त थप गरिएको छैन?',
+      'असामान्य कम दर वा थप कार्यसम्पादन जमानत लागू भए वर्तमान नियम/SBD को formula अनुसार कारण र गणना अभिलेख गरिएको छ?',
+      'मूल्यांकन समितिका सबै सदस्यहरूले प्रतिवेदनमा हस्ताक्षर गरेका छन्?'
+    ],
+    risksAndMitigation: 'नियम विपरीत बोलपत्र अस्वीकृत गर्दा वा गैर-उत्तरदायी बोलपत्रलाई स्वीकृत गर्दा अख्तियार दुरुपयोग अनुसन्धान आयोग र पुनरावलोकन समितिमा उजुरी पर्न सक्छ।',
+    officialAdvice: 'प्रत्येक निर्णयमा बोलपत्र कागजातको स्पष्ट दफालाई आधार बनाई विस्तृत कारण खुलाउनुहोस्।'
+  },
+  {
+    id: 7,
+    stageNumber: 'चरण ७',
+    title: 'आशयको सूचना र सम्झौता (Letter of Intent & Contract Award)',
+    titleEn: 'Letter of Intent (LoI) and Contract Signing',
+    shortDesc: 'LoI/review अवधि लागू हुने विधिमा सो प्रक्रिया पूरा गरी आवश्यक जमानतपछि सम्झौता सम्पन्न गर्ने।',
+    shortDescEn: 'Complete the applicable notice/review period and securities before contract signing.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा २७ र नियमावली, २०६४ को नियम ७८, ८०',
+    timeLimit: 'चयनित विधि, लागू नियम र SBD/करारले तोकेको अवधि',
+    keyResponsibilities: [
+      'LoI/review वा award notice लागू हुने विधिमा छनोट विवरण र रकम तोकिएको माध्यमबाट सार्वजनिक गर्ने',
+      'लागू review अवधि पूरा भएपछि अधिकारप्राप्त स्वीकृति/LoA जारी गर्ने',
+      'लागू SBD/करार र वर्तमान नियमअनुसार कार्यसम्पादन/अन्य जमानत लिने',
+      'दुवै पक्षबाट आधिकारिक सम्झौता पत्रमा हस्ताक्षर गरी कार्यादेश जारी गर्ने'
+    ],
+    mandatoryDocuments: [
+      'आशयको सूचना (Letter of Intent)',
+      'बोलपत्र स्वीकृतिको पत्र (Letter of Acceptance)',
+      'बैंक ग्यारेन्टी (Performance Security) को आधिकारिक प्रमाणीकरण',
+      'हस्ताक्षरित द्विपक्षीय ठेक्का सम्झौता (Contract Agreement)',
+      'कार्यादेश (Work Order)'
+    ],
+    checkpoints: [
+      'लागू review/standstill अवधि पूरा गरी उजुरी/पुनरावलोकनको स्थिति अभिलेख गरिएको छ?',
+      'के बैंक ग्यारेन्टी जारी गर्ने बैंकसँग सम्पर्क गरी आधिकारिकता (Confirmation) जाँच गरियो?',
+      'के पेश्की (Mobilization Advance) दिने भए शतप्रतिशत बैंक ग्यारेन्टी लिइएको छ?'
+    ],
+    risksAndMitigation: 'लागू सूचना/review प्रक्रिया नपाल्दा चुनौती/पुनरावलोकन जोखिम हुन्छ; चयनित विधिको requirements पुष्टि गरी कारणसहित record राख्नुहोस्।',
+    officialAdvice: 'बैंक ग्यारेन्टीको म्याद र रकम पूर्ण रूपमा सम्झौता अवधि र दोष दायित्व अवधि (Defect Liability Period) सम्म सुरक्षित रहने गरी मात्र कार्यादेश दिनुहोस्।'
+  },
+  {
+    id: 8,
+    stageNumber: 'चरण ८',
+    title: 'सम्झौता व्यवस्थापन र भुक्तानी (Contract Management & Audit)',
+    titleEn: 'Contract Management, Payment & Final Handover',
+    shortDesc: 'कार्य प्रगतिको नियमित अनुगमन, नापी किताब (Measurement Book) प्रमाणित, रनिङ/अन्तिम बिल भुक्तानी तथा हस्तान्तरण।',
+    shortDescEn: 'Progress monitoring, MB verification, bill payments, variation control and project closure.',
+    legalBasis: 'सार्वजनिक खरिद ऐन, २०६३ को दफा ५० देखि ६० र नियमावली, २०६४ को नियम ११५ देखि १२८ सम्म',
+    timeLimit: 'सम्झौतामा उल्लेखित म्याद भित्र',
+    keyResponsibilities: [
+      'साइट इन्चार्ज तथा सुपरिवेक्षण इन्जिनियर तोक्ने',
+      'कार्यसम्पादनको गुणस्तर परीक्षण (Lab Test Reports) गर्ने',
+      'नापी किताब (MB) मा कार्यस्थलमै नापजाँच गरी प्रविष्ट गर्ने',
+      'सार्वजनिक परीक्षण (Public Audit) सम्पन्न गर्ने',
+      'म्याद थप, भेरिएसन अर्डर (Variation Order) आवश्यक परे कानुनसम्मत प्रक्रिया अपनाउने'
+    ],
+    mandatoryDocuments: [
+      'नापी किताब (Measurement Book - MB)',
+      'सामग्री परीक्षण प्रतिवेदन (Lab Test Reports)',
+      'रनिङ तथा अन्तिम बिल (Running & Final Bills)',
+      'कार्य सम्पन्न प्रतिवेदन (Work Completion Report)',
+      'सार्वजनिक परीक्षण (Public Audit) माइन्युट'
+    ],
+    checkpoints: [
+      'के कर, retention र अन्य कट्टी लागू कर कानून तथा सम्झौताअनुसार गणना/अभिलेख गरिएको छ?',
+      'के निर्माण सम्पन्नता प्रमाणपत्र (Completion Certificate) जारी गरिएको छ?',
+      'के दोष निवारण अवधि (DLP) समाप्त भएपछि मात्र अन्तिम धरौटी फुकुवा गरिएको छ?'
+    ],
+    risksAndMitigation: 'नापी किताब प्रमाणित नगरी वा फिल्डमा नगई बिल भुक्तानी गर्दा प्रत्यक्ष भ्रष्टाचारको अभियोग लाग्ने जोखिम हुन्छ।',
+    officialAdvice: 'सम्झौता/निर्देशिकाले मागेअनुसार technical evidence, सार्वजनिक परीक्षण र delivery/acceptance record संलग्न गर्नुहोस्।'
+  },
+  {
+    id: 9,
+    stageNumber: 'चरण ९',
+    title: 'विशेष विधि, अपवाद र वैकल्पिक करार',
+    titleEn: 'Special Methods, Exceptions and Alternative Contracting',
+    shortDesc: 'सामान्य खुला प्रतिस्पर्धाबाट बाहिरका विधि केवल आफ्नो eligibility, रकम, approval र प्रक्रिया पूरा भएपछि प्रयोग गर्ने।',
+    shortDescEn: 'Use a non-standard route only when its statutory eligibility, threshold, approval, and procedure are evidenced.',
+    legalBasis: 'ऐन दफा ४०–४५, ६६; नियम २१क, २२, ३१क–३१ञ, ८४–९८',
+    timeLimit: 'छानिएको विधिको हाल लागू नियम/SBD अनुसार',
+    keyResponsibilities: [
+      'सोझै, सिलबन्दी, सीमित बोलपत्र, catalogue, marketplace वा reverse auction को eligibility/सीमा प्रमाणित गर्ने',
+      'proprietary, घरेलु प्राथमिकता, buy-back, समिति, अमानत, ration, lease तथा सेवा करारको अलग औचित्य बनाउने',
+      'Design-Build/EPC र framework/call-off मा feasibility, ceiling, risk allocation र approval स्वीकृत गर्ने',
+      'आपतकालीन दफा ६६ प्रयोग गर्दा न्यूनतम तत्काल आवश्यकता र माथिल्लो तहलाई जानकारी दिने',
+      'बोलपत्र नआए/रद्द/अस्वीकृत भए कारणयुक्त सूचना, पुनःआह्वान र समान criteria को audit trail राख्ने'
+    ],
+    mandatoryDocuments: [
+      'विधि छनोट औचित्य, लागत अनुमान, बजेट/अधिकार स्वीकृति र बजार अध्ययन',
+      'अपवाद eligibility प्रमाण, quotation/notice/opening/evaluation record (लागू अनुसार)',
+      'सम्बन्धित समिति, valuation, platform log, feasibility, framework ceiling वा emergency report',
+      'कारणयुक्त cancellation/re-tender decision र bidder notice'
+    ],
+    checkpoints: [
+      'छानिएको खरिद विधि र स्वीकृति लागू ऐन तथा नियमावलीको सम्बन्धित व्यवस्थासँग मिल्छ?',
+      'विशेष विधिको eligibility, कागजात र सक्षम अधिकारीको लिखित स्वीकृति उपलब्ध छ?',
+      'सुविधा वा threshold छल्न प्याकेज/खरिद विभाजन गरिएको छैन?',
+      'रद्द/पुनःबोलपत्र गर्दा नयाँ criteria सबै सहभागीलाई समान रूपमा दिइएको छ?'
+    ],
+    risksAndMitigation: 'अपवाद विधिलाई साधारण खरिदमा प्रयोग गर्दा प्रतिस्पर्धा, मूल्य उचितता र अधिकार स्वीकृति कमजोर हुन सक्छ; हरेक अपवादका छुट्टाछुट्टै supporting records राख्नुहोस्।',
+    officialAdvice: 'छानिएको विधि, रकम-सीमा र स्वीकृति निर्णयलाई लागू ऐन तथा नियमावलीको सम्बन्धित दफा/नियमसहित खरिद मिसिलमा अभिलेख गर्नुहोस्।'
+  },
+  {
+    id: 10,
+    stageNumber: 'चरण १०',
+    title: 'परामर्श सेवा छनोट तथा संयुक्त मूल्याङ्कन',
+    titleEn: 'Consultant Selection and Combined Evaluation',
+    shortDesc: 'EOI/RFP, shortlist र QCBS/QBS/FBS/LCS/Single Source मध्ये TOR-सँग मिल्ने विधि स्वीकृत criteria अनुसार छनोट गर्ने।',
+    shortDescEn: 'Choose and evaluate consultants using a TOR-fit method and evaluation formula disclosed before proposals are opened.',
+    legalBasis: 'ऐन दफा ३०–३५; नियम ७०–८३ र ८१क',
+    timeLimit: 'EOI/RFP र लागू selection method मा दिइएको अवधि',
+    keyResponsibilities: [
+      'परामर्श आवश्यकता, TOR, deliverable, लागत अनुमान र selection-method औचित्य स्वीकृत गर्ने',
+      'रकम/योग्यता अनुसार EOI वा roster मार्ग छानी निष्पक्ष shortlist बनाउने',
+      'technical criterion, score weight, cutoff र financial formula RFP मा पहिले नै प्रकाशित गर्ने',
+      'technical report बन्द/स्वीकृत भएपछि मात्र अनुमति भएको financial proposal खोल्ने',
+      'QCBS/QBS/FBS/LCS को आ-आफ्नो formula र negotiation क्रम पालना गरी report/approval लिने'
+    ],
+    mandatoryDocuments: [
+      'स्वीकृत TOR, cost estimate, method justification र EOI/RFP',
+      'shortlist criteria, EOI response/register र signed shortlist report',
+      'individual/consolidated technical score sheets र financial-opening timestamp',
+      'combined calculation, negotiation minutes, approval authority decision र contract'
+    ],
+    checkpoints: [
+      'QCBS ratio/score formula RFP मा урьдчилан तोकिएको छ र त्यही मात्र प्रयोग भएको छ?',
+      'QBS/FBS/LCS को प्रयोगको कारण, threshold र approval प्रमाणित छ?',
+      'Single-source/वार्तामा अपवाद आधार, विकल्प खोज र मूल्य benchmark मिसिलमा छन्?',
+      'परामर्श प्रस्तावको award नियम ८१क र delegation अनुसार सक्षम अधिकारीले स्वीकृत गरेका छन्?'
+    ],
+    risksAndMitigation: 'technical cutoff/weight पछि बदल्ने, financial proposal चाँडै खोल्ने वा एउटै ratio सबै सेवामा लगाउँदा नतिजा प्रभावित हुन्छ; प्रत्येक calculation स्वतन्त्र रूपमा पुनःजाँच्नुहोस्।',
+    officialAdvice: 'QCBS को एक निश्चित ratio सबै assignment मा लागू हुँदैन; लागू ratio/criteria RFP मा राखी current selection rule बाट validate गर्नुहोस्।'
+  }
+];
+
+export const PROCUREMENT_STAGES: ProcurementStage[] = PROCUREMENT_STAGES_SOURCE.map((stage) =>
+  stage.id === 10
+    ? {
+        ...stage,
+        shortDesc: 'EOI/RFP र shortlist पछि TOR अनुसार QCBS/QBS/FBS/LCS वा अन्य उपयुक्त विधिबाट consultant मूल्याङ्कन गर्ने।',
+        checkpoints: [
+          'QCBS मा RFP अघि नै technical/financial weights, cutoff र formula प्रकाशित गरिएको छ?',
+          'QBS/FBS/LCS को औचित्य, सीमा र आवश्यक approval अभिलेखमा छन्?',
+          'Single-source/वार्तामा अपवाद आधार, विकल्प खोज र मूल्य benchmark छन्?',
+          'Consultant award नियम ८१क र निकायको delegation अनुसार स्वीकृत गरिएको छ?',
+        ],
+      }
+    : stage
+);
+
+const PROCUREMENT_METHODS_SOURCE: ProcurementMethod[] = [
+  {
+    id: 'open-bidding',
+    name: 'खुला बोलपत्र (Open Bidding - NCB / ICB)',
+    nameEn: 'Open Competitive Bidding (National & International)',
+    thresholdLimit: 'रु. २० लाखभन्दा बढीमा नियम ३१(१); दफा १५ को अवस्थामा अन्तर्राष्ट्रिय खुला बोलपत्र',
+    category: 'works',
+    description: 'सार्वजनिक निकायले स्वच्छ प्रतिस्पर्धाको माध्यमबाट खरिद गर्नुपर्ने मुख्य र अनिवार्य विधि। यसमा राष्ट्रिय तथा अन्तर्राष्ट्रियस्तरको प्रतिस्पर्धा हुन्छ।',
+    legalRef: 'ऐन दफा ८–१६; नियम १९ र ३१',
+    noticePeriod: 'ऐन दफा १४ अनुसार राष्ट्रिय बोलपत्र कम्तीमा ३० दिन; अन्तर्राष्ट्रिय बोलपत्र कम्तीमा ४५ दिन',
+    approvingAuthority: 'बोलपत्र स्वीकृति: नियम ६७ को रकम/पद तालिका; लागत अनुमान: नियम १४',
+    requiredDocuments: [...COMMON_METHOD_DOCUMENTS, 'PPMO SBD, notice, qualification/evaluation criteria, bid security, opening/evaluation report, approval, performance security र contract'],
+    steps: [
+      'खरिद योजना र लागत अनुमान स्वीकृति',
+      'PPMO को मानक बोलपत्र कागजात (SBD) तयार',
+      'e-GP पोर्टल र राष्ट्रिय दैनिक पत्रिकामा सूचना प्रकाशन',
+      'पूर्व-तयारी बैठक (Pre-bid meeting) सञ्चालन (आवश्यक भएमा)',
+      'सार्वजनिक रूपमा बोलपत्र खोल्ने र मुचुल्का तयार गर्ने',
+      'मूल्यांकन समितिबाट प्राविधिक तथा आर्थिक मूल्यांकन',
+      '७ दिने आशयको सूचना (LoI) जारी',
+      'कार्यसम्पादन जमानत लिई सम्झौता र कार्यादेश'
+    ],
+    specialConditions: [
+      'ऐन तथा नियमावलीमा तोकिएका योग्यता र प्रतिस्पर्धा शर्त समान रूपमा लागू गर्ने',
+      'e-GP applicability हालको PPMO निर्देशन/नियमबाट पुष्टि गर्ने; सबै विधिमा blanket दाबी नगर्ने',
+      'बोलपत्र अस्वीकृति, पुनःबोलपत्र र award अघि लागू review अवधि कारणसहित अभिलेख गर्ने'
+    ]
+  },
+  {
+    id: 'sealed-quotation',
+    name: 'सिलबन्दी दरभाउपत्र (Sealed Quotation - RFQ)',
+    nameEn: 'Sealed Quotation Method',
+    thresholdLimit: 'नियम ८४(१): रु. २० लाखसम्म मालसामान/निर्माण/कुनै सेवा; उपनियम (१क): सूचीकृत स्वास्थ्य वस्तु रु. ५० लाखसम्म',
+    category: 'goods',
+    description: 'सामान्य प्रकृतिका मालसामान, निर्माण कार्य वा अन्य सेवा खरिद गर्दा छोटो प्रक्रियाबाट प्रतिस्पर्धा गराउन अपनाइने विधि।',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ को दफा ४० र नियमावलीको नियम ८४',
+    noticePeriod: 'नियम ८४ अनुसार प्रकाशित सूचनामा तोकिएको म्याद',
+    approvingAuthority: 'नियम ८४ तथा लागू स्वीकृति व्यवस्था अनुसार',
+    requiredDocuments: [...COMMON_METHOD_DOCUMENTS, 'दरभाउपत्र सूचना/फाराम, प्राप्त प्रस्ताव र खोल्ने मुचुल्का, मूल्याङ्कन/स्वीकृति र सम्झौता'],
+    steps: [
+      'लागत अनुमान स्वीकृति',
+      'सिलबन्दी दरभाउपत्र फारम तयार गर्ने',
+      'नियम ८४ ले तोकेको हाल लागू अवधिमा सूचना/दरभाउ अनुरोध गर्ने',
+      'दरभाउपत्र खोल्ने र मूल्यांकन गर्ने',
+      'न्यूनतम मूल्यांकित सारभूत रूपमा प्रभावग्राही दरभाउ स्वीकृत गरी ७ दिने आशयको सूचना जारी गर्ने',
+      'सम्झौता सम्पन्न गर्ने'
+    ],
+    specialConditions: [
+      'Matrix ले कम्तीमा ३ प्रभावग्राही दरभाउ шаарддаг гэж тэмдэглэсэн; хангагдахгүй бол дахин आह्वानको निर्णय नियमबाट जाँच्ने',
+      'कामलाई टुक्र्याएर दरभाउमा लैजान निषेध'
+    ]
+  },
+  {
+    id: 'direct-procurement',
+    name: 'सोझै खरिद (Direct Procurement / Shopping)',
+    nameEn: 'Direct Procurement',
+    thresholdLimit: 'नियम ८५(१)(क): मालसामान/निर्माणमा रु. १५ लाखसम्म',
+    category: 'goods',
+    description: 'नियम ८५ को अवस्था र रकम-सीमाभित्र गरिने सोझै खरिद; प्रतिस्पर्धा छलेर वा केवल समय अभाव देखाएर प्रयोग गर्न मिल्दैन।',
+    legalRef: 'ऐन दफा ४१; नियम ८५(१)(क)',
+    noticePeriod: 'रु. १ लाखभन्दा बढीमा नियम ८५(४) अनुसार मौजुदा सूचीका कम्तीमा तीनबाट लिखित दरभाउ/प्रस्ताव',
+    approvingAuthority: 'लागत अनुमान: नियम १४; सोझै खरिद: नियम ८५',
+    requiredDocuments: [...COMMON_METHOD_DOCUMENTS, 'बजार अध्ययन, लागू भए ३ quotation, तुलना-पत्र, direct-method कारण, स्वीकृति, order, delivery/inspection र invoice'],
+    steps: [
+      'आवश्यकता पहिचान र लागत अनुमान स्वीकृति',
+      'रु. १ लाखभन्दा बढीमा मौजुदा सूचीका कम्तीमा तीन योग्य आपूर्तिकर्ता/व्यवसायीबाट लिखित दररेट माग गर्ने',
+      'प्राप्त दररेटहरूको तुलनात्मक तालिका तयार गर्ने',
+      'न्यूनतम दर पेश गर्ने फर्मलाई खरिद आदेश (Purchase Order) दिने',
+      'दाखिला प्रतिवेदन (Store Inward Report) र बिल भुक्तानी'
+    ],
+    specialConditions: [
+      'एक आर्थिक वर्षको जम्मा खरिद र लागू सीमा/अपवाद नियम ८५ को हाल लागू पाठसँग जाँच्ने',
+      'आपतकालीन अवस्था अलग कानूनी आधार हो; सामान्य direct-purchase सीमा स्वतः बढ्दैन'
+    ]
+  },
+  {
+    id: 'consumer-committee',
+    name: 'उपभोक्ता समिति मार्फत खरिद (User Committee)',
+    nameEn: 'Procurement through Users Committee',
+    thresholdLimit: 'नियम ९७(१) अनुसार रु. १ करोडसम्मको निर्माण कार्य वा सम्बन्धित सेवा',
+    category: 'works',
+    description: 'स्थानीय समुदायलाई रोजगारी सिर्जना गर्न र अपनत्व बढाउन श्रममूलक प्रकृतिको निर्माण कार्य उपभोक्ता समिति वा लाभग्राही समुदायबाट गराइने विधि।',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ को दफा ४४ र नियमावलीको नियम ९७',
+    noticePeriod: 'नियम ९७(२) अनुसार सार्वजनिक सूचना/प्रस्ताव प्रक्रिया',
+    approvingAuthority: 'सम्बन्धित सार्वजनिक निकाय (नियम ९७)',
+    requiredDocuments: [...COMMON_METHOD_DOCUMENTS, 'खुला आमभेला minutes, लाभग्राही सूची, समिति दर्ता/पदाधिकारी प्रमाण, contribution calculation, सम्झौता, नापजाँच/गुणस्तर, भुक्तानी र सार्वजनिक परीक्षण'],
+    steps: [
+      'स्थानीय प्रत्यक्ष लाभग्राहीहरूको आमभेलाबाट उपभोक्ता समिति गठन',
+      'सार्वजनिक निकाय र समितिबीच लागत साझेदारी तथा सम्झौता',
+      'सार्वजनिक सूचना पाटी (Hoarding Board) अनिवार्य स्थापना',
+      'किस्ताबन्दीमा पेश्की तथा कार्यप्रगतिका आधारमा भुक्तानी',
+      'कार्य सम्पन्न पश्चात सार्वजनिक परीक्षण (Public Audit) सम्पन्न गर्ने'
+    ],
+    specialConditions: [
+      'कुनै पनि भारी मेसिनरी (Heavy Equipment) प्रयोग गर्न नपाइने (श्रममूलक हुनुपर्ने)',
+      'उपभोक्ता समितिले पेटी ठेक्का (Sub-contracting) दिन पूर्ण रूपमा निषेध'
+    ]
+  },
+  {
+    id: 'consultancy-services',
+    name: 'परामर्श सेवा खरिद (Consultancy Services - EOI/RFP)',
+    nameEn: 'Consulting Services (Expression of Interest & RFP)',
+    thresholdLimit: 'नियम ७०: रु. २०–५० लाखमा कम्तीमा सात दिनको EOI सूचना; रु. ५० लाखभन्दा बढीमा EOI',
+    category: 'consulting',
+    description: 'अध्ययन, अनुसन्धान, सर्भे, विस्तृत इन्जिनियरिङ डिजाइन, सुपरिवेक्षण लगायतका बौद्धिक सेवाहरूको खरिद।',
+    legalRef: 'ऐन दफा ३०–३५; नियम ७०–८३',
+    noticePeriod: 'नियम ७०(१क) अनुसार रु. २०–५० लाखमा कम्तीमा सात दिन; अन्यमा नियम ७० अनुसार',
+    approvingAuthority: 'परामर्श प्रस्ताव स्वीकृति: नियम ८१क',
+    requiredDocuments: [...COMMON_METHOD_DOCUMENTS, 'TOR, consultant shortlist criteria, EOI/RFP, technical score sheets, financial/combined report, negotiation minutes र approval'],
+    steps: [
+      'कार्य विवरण (Terms of Reference - TOR) र लागत अनुमान स्वीकृति',
+      'आशयपत्र (EOI) आह्वान र सर्टलिस्टिङ (Shortlisting)',
+      'सर्टलिस्ट भएका फर्महरूलाई प्रस्ताव माग फारम (RFP) जारी',
+      'प्राविधिक र वित्तीय प्रस्ताव (Technical & Financial Proposals) दुई खाममा माग',
+      'चयन विधिअनुसार technical report स्वीकृत भएपछि मात्र लागू हुने financial proposals खोल्ने',
+      'वार्ता (Negotiations) र सम्झौता'
+    ],
+    specialConditions: [
+      'QCBS/QBS/FBS/LCS मध्ये TOR-सँग मिल्ने विधि छानी लागू नियम र प्रकाशित RFP का weight/formula पालना गर्ने',
+      'व्यक्तिगत परामर्शदाताको हकमा छुट्टै मापदण्ड'
+    ]
+  },
+  defineMethod({
+    id: 'sealed-health', name: 'सिलबन्दी दरभाउ: स्वास्थ्य उपकरण/औषधि विशेष', nameEn: 'Sealed Quotation for Specified Health Goods',
+    thresholdLimit: 'रु. ५० लाखसम्म; नियममा सूचीकृत वस्तु मात्र', category: 'goods',
+    description: 'X-ray, ECG, औषधिजन्य वा स्वास्थ्य उपकरणमा नियम ८४ को विशेष सीमा लागू भएमा।',
+    legalRef: 'नियम ८४(१क)', noticePeriod: 'नियम ८४ अनुसार प्रकाशित सूचनाको म्याद', approvingAuthority: 'नियम ८४ तथा लागू स्वीकृति व्यवस्था अनुसार',
+    steps: ['वस्तु विशेष उपनियमको सूचीमा पर्छ कि प्रमाणित गर्ने', 'specification, quality/registration र cost estimate स्वीकृत गर्ने', 'समान म्यादमा quotations माग्ने, खोल्ने र record बनाउने', 'अनुरूपता, मूल्य, warranty र delivery मूल्याङ्कन गर्ने', 'approval, order/contract, delivery inspection र payment अभिलेख गर्ने'],
+    requiredDocuments: ['विशेष उपनियम लागू भएको वर्गीकरण, specification, quality/registration प्रमाण', 'estimate, quotation/notice, opening/evaluation report, approval र delivery record'],
+    specialConditions: ['विशेष सीमा सामान्य मालसामानमा लागू नगर्ने'],
+  }),
+  defineMethod({
+    id: 'lump-sum-works', name: 'एकमुष्ट दर: योग्य निर्माण कार्य', nameEn: 'Lump-Sum Method for Eligible Works',
+    thresholdLimit: 'नियम ३१क अनुसार रु. २ करोडसम्म; बहुवर्षीय खरिदमा लागू हुँदैन', category: 'works',
+    description: 'पूर्ण डिजाइन/कामको दायरा पहिले नै स्पष्ट भएका योग्य निर्माण कार्यलाई निश्चित कुल मूल्यमा प्रतिस्पर्धाबाट खरिद गर्ने।',
+    legalRef: 'नियम ३१क', noticePeriod: 'लागू खुला बोलपत्रको न्यूनतम म्याद', approvingAuthority: 'निकाय प्रमुख/नियमअनुसार अधिकारप्राप्त अधिकारी',
+    steps: ['lump-sum योग्य कार्य र scope निश्चित भएको प्राविधिक औचित्य स्वीकृत गर्ने', 'पूर्ण design, drawing, site data र acceptance criteria तयार गर्ने', 'fixed price, completion र risk allocation सहित प्रतिस्पर्धा गराउने', 'पूर्वनिर्धारित responsiveness/evaluation criteria लागू गर्ने', 'milestone, quality test र completion मा आधारित acceptance/payment गर्ने'],
+    requiredDocuments: ['scope/design, drawing, site information, estimate, method justification', 'bid document, evaluation/approval, fixed-price contract, inspection/test/acceptance records'],
+    specialConditions: ['नियम ३१क(३) अनुसार बहुवर्षीय खरिदमा प्रयोग गर्न पाइँदैन'],
+  }),
+  defineMethod({
+    id: 'catalogue-shopping', name: 'क्याटलग सपिङ', nameEn: 'Catalogue Shopping', thresholdLimit: 'नियम ३१ख अनुसार योग्य mechanical goods', category: 'goods',
+    description: 'अधिकृत विक्रेता/उत्पादकको प्रकाशित वा निर्धारित मूल्य भएका योग्य वस्तुको catalogue-based खरिद।',
+    legalRef: 'नियम ३१ख', noticePeriod: 'नियम ३१ख(१) अनुसार ७ देखि १५ दिन', approvingAuthority: 'नियम ३१ख अनुसार',
+    steps: ['वस्तु catalogue method का लागि eligible भएको आधार लेख्ने', 'अधिकृत reseller, current catalogue price र specification प्रमाणित गर्ने', 'विकल्प, delivery, warranty र total cost तुलना गर्ने', 'उचित मूल्य र छनोटको कारण स्वीकृत गराउने', 'purchase order, delivery inspection र payment record राख्ने'],
+    requiredDocuments: ['catalogue/price list, authorized seller proof, market study and estimate', 'specification comparison, method justification, approval, order and receipt'],
+    evaluationProcess: ['catalogue र seller को प्रामाणिकता जाँच्ने', 'specification, total cost, warranty र delivery तुलना गर्ने', 'छनोट र मूल्य-उचितताको आधार लेख्ने'],
+    specialConditions: ['नियम ३१खमा उल्लिखित यान्त्रिक मालसामान तथा आधिकारिक उत्पादक/विक्रेताको प्रक्रिया मात्र लागू गर्ने'],
+  }),
+  defineMethod({
+    id: 'limited-tendering', name: 'सीमित बोलपत्र', nameEn: 'Limited Tendering', thresholdLimit: 'बजारमा योग्य supplier/contractor बढीमा ३ जना मात्र उपलब्ध', category: 'other',
+    description: 'बजार सर्वेक्षणले प्रतिस्पर्धी संख्या सीमित भएको पुष्टि गर्दा मात्र प्रयोग हुने अपवाद।',
+    legalRef: 'नियम ३१ग', noticePeriod: 'नियम ३१ग(१) अनुसार १५ दिन', approvingAuthority: 'एक तह माथिको अधिकारीको पूर्वस्वीकृति (नियम ३१ग(३))',
+    steps: ['बजार सर्वेक्षणबाट उपलब्ध सबै योग्य व्यवसायी पहिचान गर्ने', 'limited tender को कारण/कानूनी आधार लिखित स्वीकृत गराउने', 'सबै पात्रलाई समान invitation, document र deadline पठाउने', 'प्राप्त प्रस्ताव खोल्ने, evaluate गर्ने र कम प्रतिस्पर्धाको असर विचार गर्ने', 'कारणयुक्त निर्णय, approval, award र contract अभिलेख गर्ने'],
+    requiredDocuments: ['supplier market survey, eligible supplier list, limited-method justification/approval', 'समान invitation/communications, opening/evaluation records and contract'],
+    specialConditions: ['सीमित प्रतिस्पर्धाको प्रमाण राख्ने; समय अभाव वा सुविधा मात्र कारण होइन'],
+  }),
+  defineMethod({
+    id: 'buy-back', name: 'बाई-ब्याक विधि', nameEn: 'Buy-Back Method', thresholdLimit: 'नियम ३१घमा रकम सीमा उल्लेख छैन', category: 'goods',
+    description: 'नयाँ मालसामान खरिद गर्दा पुरानो मालसामान फिर्ता/सटहीको मूल्य छुट्टै देखाई प्रतिस्पर्धा गर्ने।',
+    legalRef: 'नियम ३१घ', noticePeriod: 'नियम ३१घ अनुसार', approvingAuthority: 'विभागीय प्रमुखको स्वीकृति (नियम ३१घ(५))',
+    steps: ['पुरानो सम्पत्तिको अवस्था र स्वतन्त्र बजार मूल्याङ्कन गर्ने', 'नयाँ वस्तुको specification र buy-back credit छुट्टाछुट्टै परिभाषित गर्ने', 'मूल्याङ्कनमा net cost कसरी तुलना हुन्छ solicitation मा स्पष्ट गर्ने', 'नयाँ वस्तुको गुणस्तर र supplier qualification जाँच्ने', 'approval पछि पुरानो सम्पत्ति हस्तान्तरण/दाखिला र नयाँ वस्तु स्वीकार गर्ने'],
+    requiredDocuments: ['asset register, condition/valuation report, approved estimate and buy-back justification', 'solicitation, separate credit/net-cost comparison, approval, transfer and acceptance records'],
+    evaluationProcess: ['नयाँ वस्तुको specification/qualification pass-fail जाँच्ने', 'नयाँ मूल्य र buy-back credit अलग राखी evaluated net cost तुलना गर्ने', 'award recommendation मा gross तथा net दुवै रकम खुलाउने'],
+    specialConditions: ['पुरानो वस्तुको valuation वा buy-back credit ले नयाँ खरिद मूल्य लुकाउन नहुने'],
+  }),
+  defineMethod({
+    id: 'two-envelope', name: 'दुई खाम विधि', nameEn: 'Two-Envelope Bidding', thresholdLimit: 'लागू नियममा योग्यता/प्राविधिक प्रस्ताव मागिएको खरिद', category: 'other',
+    description: 'Technical र financial प्रस्ताव छुट्टाछुट्टै प्राप्त/खोली मूल्यले technical evaluation प्रभावित हुन नदिने विधि।',
+    legalRef: 'नियम ३१ज', noticePeriod: 'मुख्य विधिको लागू सूचना अवधि', approvingAuthority: 'मुख्य खरिदको रकम/पद अधिकार तालिका अनुसार',
+    steps: ['दुई खामको औचित्य र criteria स्वीकृत गर्ने', 'RFP/SBD मा technical cutoff, weighting र financial formula प्रकाशन गर्ने', 'दुवै खाम सुरक्षित राखी पहिले technical मात्र खोल्ने', 'technical scores/report हस्ताक्षर गरी बन्द गरेपछि मात्र सफलको financial खोल्ने', 'स्वीकृत formula अनुसार combined evaluation गरी approval report बनाउने'],
+    requiredDocuments: ['method justification, RFP/SBD, technical criteria/cutoff and opening logs', 'signed technical evaluation before financial opening, financial/combined report and approval'],
+    evaluationProcess: ['technical result मा financial price оруулахгүйгээр score/approve хийх', 'cutoff पारсан प्रस्तावको financial envelope मात्र खोलох', 'RFP मा प्रकाशित аргын даायраमा combined/financial ranking गर्ने'],
+    specialConditions: ['प्रस्ताव खोलेपछि score, weight वा cutoff बदल्न नहुने'],
+  }),
+  defineMethod({
+    id: 'reverse-auction', name: 'रिभर्स अक्सन', nameEn: 'Reverse Auction', thresholdLimit: 'नियम ३१ञ(२): रु. ५० लाखसम्मको मालसामान वा अन्य सेवा', category: 'goods',
+    description: 'PPMO को अनुमोदित electronic system बाट पात्र bidder ले दर घटाउँदै प्रतिस्पर्धा गर्ने।',
+    legalRef: 'नियम ३१ञ', noticePeriod: 'नियम ३१ञ(४) अनुसार कम्तीमा सात दिन', approvingAuthority: 'नियम ३१ञ अनुसार',
+    steps: ['वस्तु standardizable र reverse auction का लागि eligible भएको पुष्टि गर्ने', 'specification, starting/reserve price र auction protocol स्वीकृत गर्ने', 'bidder को technical eligibility auction अघि जाँच्ने', 'नियमित system मा समान अवसरसहित auction सञ्चालन गर्ने', 'system log, closing price र abnormally low offer जाँच्ने', 'award approval र contract record राख्ने'],
+    requiredDocuments: ['eligibility/method rationale, specification, estimate, auction rules', 'bidder qualification, platform audit log, evaluation, approval and contract'],
+    evaluationProcess: ['auction अघि technical compliance pass/fail टुंग्याउने', 'system-recorded valid closing prices तुलना गर्ने', 'abnormally low offer को sustainability लागू नियमअनुसार जाँच्ने'],
+    specialConditions: ['नियम ३१ञ(१) अनुसार PPMO ले तयार गरेको प्रणालीमार्फत सञ्चालन गर्ने'],
+  }),
+  defineMethod({
+    id: 'marketplace-single', name: 'सरकारी ई-मार्केटप्लेस: एकल स्रोत', nameEn: 'Government e-Marketplace: Single Source', thresholdLimit: 'नियम ८६क(२)(क): रु. १० लाखसम्म', category: 'goods',
+    description: 'योग्य सरकारी e-marketplace item मा दर्ता supplier बाट एकल-source electronic order।', legalRef: 'नियम ८६क(२)(क)',
+    noticePeriod: 'नियम ८६क तथा प्रणालीमा तोकिएअनुसार', approvingAuthority: 'नियम ८६क(२)(क) अनुसार',
+    steps: ['वस्तु/channel eligible र supplier दर्ता भएको पुष्टि गर्ने', 'listing, current price, specification र delivery conditions verify गर्ने', 'single-source route र price reasonableness को कारण स्वीकृत गर्ने', 'electronic approval/order जारी गर्ने', 'delivery/quality, invoice र stock/asset record जाँच्ने'],
+    requiredDocuments: ['marketplace price/listing snapshot, registration, estimate and route justification', 'electronic approval/order log, delivery, inspection, invoice and payment record'],
+    specialConditions: ['नियम ८६क(३) अनुसार दर्ता शुल्क रु. ३,००० र वार्षिक नवीकरण रु. १,०००'],
+  }),
+  defineMethod({
+    id: 'marketplace-quotations', name: 'सरकारी ई-मार्केटप्लेस: तीन दरभाउ', nameEn: 'Government e-Marketplace: Three Quotations', thresholdLimit: 'नियम ८६क(२)(ख): रु. २० लाखसम्म', category: 'goods',
+    description: 'Marketplace मा एउटै specification र deadline सहित कम्तीमा तीन electronic quotation तुलना।', legalRef: 'नियम ८६क(२)(ख)',
+    noticePeriod: 'नियम ८६क तथा प्रणालीमा तोकिएअनुसार', approvingAuthority: 'नियम ८६क(२)(ख) अनुसार',
+    steps: ['approved specification/estimate बाट electronic RFQ बनाउने', 'योग्य supplier हरूलाई समान deadline मा quote माग्ने', 'responses lock/open गरी comparison statement बनाउने', 'eligibility, responsiveness, taxes/delivery र evaluated price जाँच्ने', 'approval, order, acceptance र payment record राख्ने'],
+    requiredDocuments: ['approved RFQ/specification/estimate, electronic invitations and timestamps', 'quotes, comparative statement, approval/order and delivery acceptance'],
+    specialConditions: ['कम quotation आएमा platform र लागू नियमको पुनःआह्वान/कारण procedure पालन गर्ने'],
+  }),
+  defineMethod({
+    id: 'marketplace-auction', name: 'सरकारी ई-मार्केटप्लेस: रिभर्स अक्सन', nameEn: 'Government e-Marketplace: Reverse Auction', thresholdLimit: 'नियम ८६क(२)(ग): रु. ५० लाखसम्म', category: 'goods',
+    description: 'सरकारी marketplace को reverse-auction channel बाट वस्तुको price competition।', legalRef: 'नियम ८६क(२)(ग)',
+    noticePeriod: 'नियम ८६क तथा प्रणालीमा तोकिएअनुसार', approvingAuthority: 'नियम ८६क(२)(ग) अनुसार',
+    steps: ['auction eligibility र standard specification पुष्टि गर्ने', 'estimate, auction rules र starting parameters स्वीकृत गर्ने', 'योग्य vendor जाँच गरी system auction चलाउने', 'audit log र closing prices तुलना गर्ने', 'approval, purchase order र quality acceptance पूरा गर्ने'],
+    requiredDocuments: ['eligibility decision, specification, estimate and auction rules', 'vendor qualification, platform audit log, evaluation/approval, order and receipt'],
+    specialConditions: ['नियम ८६क(२)(ग) अनुसार रिभर्स अक्सन प्रणाली प्रयोग गर्ने'],
+  }),
+  defineMethod({
+    id: 'domestic-bidders-works', name: 'स्वदेशी बोलपत्रदाता मात्र: निर्माण', nameEn: 'Domestic-Only Competition for Works',
+    thresholdLimit: 'नियम ३१ङ(१): रु. २ करोडभन्दा बढीदेखि रु. ५ अर्बसम्म', category: 'works',
+    description: 'ऐन दफा ११(२) र नियम ३१ङ अनुसारको स्वदेशी बोलपत्रदाताबीचको प्रतिस्पर्धा।',
+    legalRef: 'नियम ३१ङ; ऐन दफा ९–१६', noticePeriod: 'राष्ट्रिय खुला बोलपत्रको लागू अवधि', approvingAuthority: 'नियम ६७ रकम/पद तालिका',
+    steps: ['घरेलु-मात्र threshold र eligibility trigger लागू छ कि प्रमाणित गर्ने', 'NCB SBD/qualification criteria समान र non-restrictive बनाउने', 'लागू e-GP र publication माध्यममा खुला सूचना गर्ने', 'opening, qualification, responsiveness र price evaluation अभिलेख गर्ने', 'review, approval, security, contract award र disclosure पूरा गर्ने'],
+    requiredDocuments: ['domestic-only legal applicability note, estimate, eligibility rules, NCB SBD and notice proof', 'opening/evaluation report, approval, security, signed contract and award disclosure'],
+    specialConditions: ['दफा १५ को अवस्था बाहेक नियम ३१ङ(१) को सीमा र राष्ट्रिय खुला बोलपत्र प्रक्रिया लागू गर्ने'],
+  }),
+  defineMethod({
+    id: 'domestic-preference', name: 'अन्तर्राष्ट्रिय बोलपत्रमा स्वदेशी प्राथमिकता', nameEn: 'Domestic Preference in International Bidding',
+    thresholdLimit: 'नियमले अनुमति दिएको अवस्थामा मात्र; रकमगत सीमा होइन', category: 'other',
+    description: 'ICB मा नियमले अनुमति दिएको domestic bidder/product preference formula लागू गर्ने।',
+    legalRef: 'नियम ३१च', noticePeriod: 'ICB को लागू notice अवधि', approvingAuthority: 'बोलपत्र स्वीकृति नियम ६७ अनुसार',
+    steps: ['preference eligible goods/works र bidder criteria निर्धारण गर्ने', 'RFP/SBD मा formula, origin/JV documents र calculation स्पष्ट राख्ने', 'सबै प्रस्तावमा एकै प्रकाशित formula लागू गर्ने', 'unadjusted/adjusted price र supporting evidence मूल्याङ्कन report मा देखाउने', 'approval र award decision अभिलेख गर्ने'],
+    requiredDocuments: ['ICB document, origin/JV declaration, applicable preference formula and evidence', 'calculation sheet, evaluation report and approval'],
+    evaluationProcess: ['पहिले responsiveness/qualification जाँच्ने', 'प्रकाशित preference formula मात्रै लागू गर्ने', 'adjusted र unadjusted मूल्य दुवै report गर्ने'],
+    specialConditions: ['ऐन तथा नियमावलीमा तोकिएको स्वदेशी प्राथमिकताको व्यवस्था र प्रकाशित मूल्याङ्कन आधार मात्र लागू गर्ने'],
+  }),
+  defineMethod({
+    id: 'proprietary-goods', name: 'Proprietary Goods / एकल आपूर्तिकर्ता', nameEn: 'Proprietary Goods and Sole Supplier',
+    thresholdLimit: 'रकम सीमा तोकिएको छैन; अपवादका शर्त प्रमाणित भएमा', category: 'goods',
+    description: 'वास्तविक exclusive right, patent, compatibility वा नियमले तोकेको अन्य वैधानिक आधारमा मात्रै।',
+    legalRef: 'नियम ८५(३), ८५(३क)', noticePeriod: 'नियम ८५ ले तोकेको प्रक्रिया', approvingAuthority: 'नियम ८५ र निकायको delegation अनुसार सक्षम अधिकारी',
+    steps: ['brand-neutral specification सम्भव/असम्भव भएको प्राविधिक विश्लेषण गर्ने', 'patent, exclusive right वा genuine compatibility को प्रमाण लिने', 'विकल्प/बजार खोज, अनुमानित मूल्य र sole-source justification स्वीकृत गर्ने', 'price reasonableness, warranty, support र negotiation terms जाँच्ने', 'लिखित स्वीकृति, contract, delivery inspection र disclosure लागू भए पूरा गर्ने'],
+    requiredDocuments: ['patent/authorization/exclusivity प्रमाण, alternatives study, compatibility analysis, estimate', 'market benchmark, negotiation minutes, approval, contract and acceptance'],
+    evaluationProcess: ['पहिले नियमको अपवाद eligibility pass/fail निर्धारण गर्ने', 'स्वतन्त्र market evidence बाट उचित मूल्य जाँच्ने', 'अपवाद/वार्ता/स्वीकृतिको कारणयुक्त report राख्ने'],
+    specialConditions: ['ब्रान्ड उल्लेख वा compatibility को सामान्य दाबी मात्र sole-source आधार होइन'],
+  }),
+  defineMethod({
+    id: 'who-prequalified-medicine', name: 'WHO pre-qualified एकल औषधि उत्पादक', nameEn: 'WHO-Prequalified Single-Source Medicine',
+    thresholdLimit: 'नियम ८५(१ख१): रकम सीमा नतोकिएको; WHO pre-qualified एकमात्र उत्पादकको अवस्था', category: 'goods', description: 'नियममा तोकिएको योग्यताप्राप्त एकमात्र औषधि उत्पादकबाट खरिद।',
+    legalRef: 'नियम ८५(१ख१)', noticePeriod: 'नियम ८५(१ख१) अनुसार',
+    approvingAuthority: 'लागू नियम, औषधि नीति र अधिकार प्रत्यायोजन अनुसार सक्षम अधिकारी',
+    steps: ['आवश्यक मात्रा, नियामक दर्ता र quality specification स्वीकृत गर्ने', 'WHO prequalification तथा single qualified producer को वर्तमान प्रमाण जाँच्ने', 'अन्तर्राष्ट्रिय बजार मूल्य/सम्झौता सर्त benchmark गर्ने', 'वैधानिक approval पछि वार्ता र contract execute गर्ने', 'batch, expiry, quality, cold-chain/storage र delivery verify गर्ने'],
+    requiredDocuments: ['medicine need, registration, WHO PQ proof, exclusivity, estimate and market benchmark', 'negotiation minutes, legal approval, batch/quality documents and receipt'],
+    evaluationProcess: ['regulatory/quality eligibility pass-fail जाँच्ने', 'supplier status र price benchmark स्वतन्त्र रूपमा verify गर्ने', 'अपवादको निर्णय र वार्ता audit trail राख्ने'],
+    specialConditions: ['rule reference र single-source eligibility official text बाट पुष्टि नगरी प्रयोग नगर्ने'],
+  }),
+  defineMethod({
+    id: 'domestic-cottage-industry', name: 'राजपत्रमा तोकिएको स्वदेशी घरेलु उद्योग', nameEn: 'Specified Domestic Cottage Industry',
+    thresholdLimit: 'नियम ८५(३घ): रु. २५ लाखसम्म', category: 'goods', description: 'नेपाल राजपत्रमा तोकिएको घरेलु उद्योगबाट उत्पादित मालसामान।',
+    legalRef: 'नियम ८५(३घ)', noticePeriod: 'नियम ८५(३घ) अनुसार', approvingAuthority: 'नियम ८५(३घ) अनुसार',
+    steps: ['उद्योग र वस्तु राजपत्रमा तोकिएको वर्गमा पर्छन् कि मिलान गर्ने', 'गुणस्तर, परिमाण, estimate र बजेट स्वीकृत गर्ने', 'उद्योग दर्ता, क्षमता, मूल्य र specification प्रमाणित गर्ने', 'लागू solicitation/evaluation र approval पूरा गर्ने', 'delivery inspection र invoice verification गर्ने'],
+    requiredDocuments: ['राजपत्र/classification match, industry registration/capacity, specification and estimate', 'price analysis, selection/approval, order/contract and receipt'],
+    specialConditions: ['सामान्य domestic supplier लाई यो exception मा राख्न मिल्दैन'],
+  }),
+  defineMethod({
+    id: 'domestic-pharmaceutical', name: 'नेपाल-उत्पादित औषधि/प्रकाशित मूल्य', nameEn: 'Nepal-Produced Pharmaceutical Goods',
+    thresholdLimit: 'नियम ८५(१क): रु. २५ लाखसम्म', category: 'goods', description: 'औषधिजन्य वा नेपालमा उत्पादित मालसामान उत्पादकको प्रकाशित बिक्री मूल्यमा खरिद।',
+    legalRef: 'नियम ८५(१क)', noticePeriod: 'नियम ८५(१क) अनुसार', approvingAuthority: 'नियम ८५(१क) अनुसार',
+    steps: ['origin, manufacturer registration र उत्पादनको नियामक अनुमति जाँच्ने', 'प्रकाशित मूल्य, quality mark/standard र estimate तुलना गर्ने', 'लागू special-route eligibility र approval लेख्ने', 'purchase order/contract जारी गरी batch/expiry निरीक्षण गर्ने', 'स्वीकृत प्राप्ति र invoice पछि payment record बनाउने'],
+    requiredDocuments: ['manufacturer/product registration, origin, published price and quality evidence', 'approved estimate, price comparison, method approval, order and batch inspection'],
+    specialConditions: ['उपलब्ध भए नेपाल गुणस्तर चिन्ह प्राप्त मालसामान खरिद गर्ने (नियम ८५(१क))'],
+  }),
+  defineMethod({
+    id: 'inter-public-entity', name: 'अर्को सार्वजनिक निकायबाट सोझै खरिद', nameEn: 'Direct Purchase from Another Public Entity',
+    thresholdLimit: 'नियम ८५(५क) अनुसार सार्वजनिक निकायले निर्धारण गरेको बिक्री मूल्य', category: 'other',
+    description: 'अर्को सार्वजनिक निकायले निश्चित बिक्री मूल्यमा उपलब्ध गराउने वस्तु/सेवा नियमले स्वीकारेमा।', legalRef: 'नियम ८५(५क)', noticePeriod: 'अधिकृत/प्रकाशित बिक्री मूल्य verify गर्ने', approvingAuthority: 'निकायको अधिकारप्राप्त अधिकारी',
+    steps: ['दुवै निकायको हैसियत र बिक्री मूल्यको आधिकारिक आधार लिने', 'बजार मूल्य, delivery र tax सहित उचितता परीक्षण गर्ने', 'direct-route justification र budget approval गर्ने', 'लिखित order/सम्झौता गरी प्राप्ति र invoice verify गर्ने'],
+    requiredDocuments: ['सार्वजनिक निकायको आधिकारिक मूल्य/उपलब्धता पत्र, estimate, market comparison', 'justification, approval, order/contract, delivery and payment records'],
+    specialConditions: ['नियम ८५(५ग) अनुसार जमानत माग गर्नु नपर्ने'],
+  }),
+  defineMethod({
+    id: 'intergovernmental-direct', name: 'अन्तर्राष्ट्रिय सरकार/निकायबाट सोझै खरिद', nameEn: 'Direct Purchase from Foreign Government or Organization',
+    thresholdLimit: 'नियम ८५(५ख) अनुसार सम्बन्धित सरकार/निकायले निर्धारण गरेको बिक्री मूल्य', category: 'other',
+    description: 'विदेशी सरकार वा अन्तर्राष्ट्रिय निकायबाट निश्चित मूल्यमा खरिद गर्न मिल्ने विशेष अवस्था।', legalRef: 'नियम ८५(५ख)', noticePeriod: 'लागू अन्तरसरकारी/दाता agreement र नियम अनुसार',
+    approvingAuthority: 'सक्षम निकाय प्रमुख तथा आवश्यक वैदेशिक/वित्तीय स्वीकृति निकाय',
+    steps: ['counterparty, कानूनी आधार र सार्वजनिक आवश्यकता confirm गर्ने', 'financing, procurement conditions, import/tax/FX र sanctions risk जाँच्ने', 'price, delivery, warranty र risk analysis स्वीकृत गर्ने', 'आवश्यक सरकारी/दाता approval लिएर लिखित agreement गर्ने', 'customs, quality, receipt, payment र disclosure record राख्ने'],
+    requiredDocuments: ['official offer/price, counterparty status, project/financing agreement, market/risk analysis', 'government approvals, signed agreement, customs/inspection/payment records'],
+    specialConditions: ['नियम ८५(५ग) अनुसार जमानत माग गर्नु नपर्ने'],
+  }),
+  defineMethod({
+    id: 'design-competition', name: 'वास्तुकला/शहरी योजना डिजाइन प्रतियोगिता', nameEn: 'Design Competition',
+    thresholdLimit: 'नियम ८७ अनुसार वास्तुकला वा शहरी योजना डिजाइन प्रतियोगिता', category: 'consulting', description: 'वास्तुकला वा urban planning concept को प्रतिस्पर्धात्मक चयन।',
+    legalRef: 'नियम ८७', noticePeriod: 'प्रतियोगिता कागजातमा दिइएको पर्याप्त समय', approvingAuthority: 'अधिकारप्राप्त अधिकारी; स्वतन्त्र jury/panel गठन',
+    steps: ['competition brief, scope, prize र अगाडिको commissioning arrangement स्वीकृत गर्ने', 'anonymity, intellectual property र judging rubric प्रकाशन गर्ने', 'विषयविज्ञ jury र conflict declarations तयार गर्ने', 'प्रकाशित rubric अनुसार anonymous evaluation र minutes गर्ने', 'winner/award अनुमोदन गरी अलग contract requirement भए छुट्टै procurement गर्ने'],
+    requiredDocuments: ['brief/TOR, cost/prize estimate, jury appointment, rubric and IP terms', 'submission log, conflict declarations, score sheets, minutes and award approval'],
+    evaluationProcess: ['design quality, function, safety, sustainability र rubric अनुसार score गर्ने', 'price नभई concept ranking पहिले पूरा गर्ने', 'jury rationale र consensus प्रतिवेदन सुरक्षित राख्ने'],
+    specialConditions: ['competition award ले पछिल्लो consulting contract स्वतः स्वीकृत गर्दैन'],
+  }),
+  defineMethod({
+    id: 'design-build-epc', name: 'Design-Build / EPC / Turnkey', nameEn: 'Design-Build, EPC and Turnkey', thresholdLimit: 'नियम २२(२)–(३) अनुसार', category: 'works',
+    description: 'डिजाइन, निर्माण, equipment/commissioning लाई एकीकृत output/performance आधारित करारमा दिने।', legalRef: 'नियम २२(२), २२(३); अन्य लागू planning/contract rules',
+    noticePeriod: 'छानिएको मुख्य खुला बोलपत्र/दुई-चरण विधिको म्याद', approvingAuthority: 'strategy/estimate पूर्वस्वीकृति र नियम ६७ को award authority अनुसार',
+    steps: ['economic, social, technical र environmental feasibility तथा conceptual design तयार गर्ने', 'Employer Requirements, site data, interfaces, performance tests र risk matrix निश्चित गर्ने', 'EPC/design-build उपयुक्तता र selection/evaluation method स्वीकृत गर्ने', 'प्रतिस्पर्धात्मक प्रक्रियाबाट technical solution र price evaluation गर्ने', 'performance guarantee, commissioning, defects, handover and payment terms सहित contract गर्ने', 'design review, test, variation control, completion and close-out evidence राख्ने'],
+    requiredDocuments: ['feasibility/concept design, site/utility/environment clearance, output specification and approved estimate', 'risk allocation, SBD, evaluation report, performance test plans, contract and completion records'],
+    evaluationProcess: ['mandatory output/technical requirements pass-fail जाँच्ने', 'पूर्वप्रकाशित quality/price formula अनुसार मात्र मूल्याङ्कन गर्ने', 'lifecycle/commissioning/performance risk र total evaluated cost report गर्ने'],
+    specialConditions: ['नियम २२(२)–(३) अनुसार defect-correction period कम्तीमा पाँच वर्ष राख्ने'],
+  }),
+  defineMethod({
+    id: 'framework-agreement', name: 'Framework / Structural / Unit-Rate Agreement', nameEn: 'Framework and Call-Off Agreement',
+    thresholdLimit: 'नियम २१क(२) अनुसार अधिकतम पाँच वर्ष', category: 'other',
+    description: 'पुनरावृत्ति मागमा supplier/terms पहिले प्रतिस्पर्धाबाट तय गरी त्यसपछि call-off गर्ने करार।', legalRef: 'नियम २१क', noticePeriod: 'मूल competition र call-off document मा तोकिएको',
+    approvingAuthority: 'Master agreement र प्रत्येक call-off मा सम्बन्धित delegation अनुसार',
+    steps: ['aggregated need, ceiling/quantity, अवधि र framework rationale स्वीकृत गर्ने', 'duration, call-off allocation/mini-competition, adjustment र termination प्रकाशित गर्ने', 'prequalification/open competition बाट suppliers shortlist/award गर्ने', 'master agreement, ceiling र अवधि approval/publication गर्ने', 'प्रत्येक call-off मा माग, उपलब्धता, competition/ranking र authority जाँच्ने', 'cumulative commitment, expiry र framework close-out monitor गर्ने'],
+    requiredDocuments: ['demand aggregation, ceiling estimate, framework strategy and criteria', 'solicitation/evaluation, approved award, signed master agreement, call-off records and cumulative log'],
+    evaluationProcess: ['framework admission र call-off ranking formula पहिले नै प्रकाशित गर्ने', 'mini-competition आवश्यक भए प्रत्येक call-off मा पुनः मूल्याङ्कन गर्ने', 'ceiling, अवधि र cumulative award सीमा monitor गर्ने'],
+    specialConditions: ['नियम २१क(२) अनुसार अधिकतम पाँच वर्ष; नियम २१क(३) अनुसार पहिलो चरणमा राष्ट्रिय बोलपत्रका लागि कम्तीमा ३० दिन'],
+  }),
+  defineMethod({
+    id: 'ration-procurement', name: 'राशन खरिद', nameEn: 'Ration Procurement', thresholdLimit: 'नियम ८८–९३ अनुसार', category: 'goods',
+    description: 'राशनको scale/दर/परिमाण र समिति आधारित अनुमान/खरिद प्रक्रिया।', legalRef: 'नियम ८८–९३', noticePeriod: 'लागू राशन नियम र चयनित प्रतिस्पर्धात्मक विधिअनुसार',
+    approvingAuthority: 'लागत अनुमान समिति: नियम ८८(२); खरिद स्वीकृति लागू व्यवस्था अनुसार',
+    steps: ['लाभग्राही, अवधि, ration scale, nutrition/quality र quantity स्वीकृत गर्ने', 'नियम ८८ अनुसार दर/लागत अनुमान समिति गठन गर्ने', 'बजार सर्वेक्षण, seasonality, transport/storage/spoilage सहित estimate तयार गर्ने', 'योग्य प्रतिस्पर्धात्मक विधिबाट supplier छानी delivery lots/inspection शर्त राख्ने', 'हरेक delivery मा तौल, गुणस्तर, expiry/condition र distribution प्रमाणित गर्ने', 'stock ledger, consumption reconciliation, invoice र payment अभिलेख गर्ने'],
+    requiredDocuments: ['beneficiary/period need, approved scale/spec, committee decision and estimate workings', 'market survey, solicitation/evaluation, delivery/weight/quality, distribution/stock and payment records'],
+    specialConditions: ['नियम ८८(२) अनुसार लागत अनुमान समिति गठन गर्ने'],
+  }),
+  defineMethod({
+    id: 'lease-property', name: 'घर/जग्गा भाडा', nameEn: 'Lease of House or Land',
+    thresholdLimit: 'नियम ९४(११): काठमाडौं उपत्यकाभित्र वार्षिक रु. १५ लाखसम्म; बाहिर रु. ५ लाखसम्म', category: 'other',
+    description: 'सार्वजनिक प्रयोजनका लागि स्थान आवश्यक हुँदा नियम ९४ अनुसार प्रस्ताव मागेर मूल्याङ्कन गरी भाडामा लिने।', legalRef: 'नियम ९४', noticePeriod: 'नियम ९४(१) अनुसार केन्द्रीय निकायमा १५ दिन; क्षेत्रीय/जिल्ला निकायमा सात दिन',
+    approvingAuthority: 'घरभाडा निर्धारण समिति; अन्तिम budget/contract स्वीकृति अधिकारप्राप्त अधिकारी',
+    steps: ['स्थान, क्षेत्रफल, अवधि, कुल दायित्व र सरकारी भवन विकल्प यकिन गर्ने', 'नियम ९४ अनुसार committee inspection र बजार rent valuation गराउने', 'योग्य सम्पत्ति/मालिकका प्रस्ताव समान आधारमा संकलन/तुलना गर्ने', 'स्थान, पहुँच, सुरक्षा, मर्मत, कर र total rent को मूल्याङ्कन गर्ने', 'स्वीकृति र written lease पछि handover/inventory अभिलेख गर्ने', 'renewal/termination निर्णय र वार्षिक दायित्व monitor गर्ने'],
+    requiredDocuments: ['space need, budget, inspection/valuation committee report and market-rent evidence', 'ownership/authority documents, comparison, approval, lease, handover and renewal record'],
+    specialConditions: ['नियम ९४(११) को रकमभित्र प्रस्ताव प्राप्त भएपछि मात्र सोझै वार्ता गर्न सकिने'],
+  }),
+  defineMethod({
+    id: 'service-contract', name: 'दैनिक सेवा करार: सुरक्षा/सरसफाइ आदि', nameEn: 'Daily Service Contracts',
+    thresholdLimit: 'नियम ९५(३): रु. १० लाखसम्म वार्ताबाट; सोभन्दा बढीमा प्रस्ताव आह्वान', category: 'other',
+    description: 'नियम ९५(१) मा उल्लेखित दैनिक कार्यालय सञ्चालनसम्बन्धी सेवा करार।', legalRef: 'नियम ९५', noticePeriod: 'नियम ९५(३) अनुसार बढी रकममा १५ दिनको सूचना',
+    approvingAuthority: 'निकाय प्रमुख/अधिकारप्राप्त अधिकारी',
+    steps: ['वार्षिक/सम्पूर्ण contract demand, scope/SLA, shifts र staffing तय गर्ने', 'wage, tax, consumables र management cost सहित estimate/budget स्वीकृत गर्ने', 'रकम र नियमअनुसार वार्ता वा खुला प्रतिस्पर्धा छनोट गर्ने', 'provider capacity, price breakdown र labour compliance evaluate गर्ने', 'SLA, worker protection, replacement, penalties र termination सहित करार गर्ने', 'attendance/output verification पछि invoice/tax/payment process गर्ने'],
+    requiredDocuments: ['TOR/SLA, annualized cost estimate, budget, method justification and staffing/wage assumptions', 'notice/proposals, evaluation/negotiation, approval, contract, attendance/output and invoice'],
+    specialConditions: ['एक आर्थिक वर्ष/सम्पूर्ण करार अवधि र renewal जोडेर threshold निर्धारण गर्ने; split नहुने'],
+  }),
+  defineMethod({
+    id: 'consultancy-roster', name: 'परामर्श: मौजुदा सूची (Roster) बाट proposal', nameEn: 'Consultancy from Standing List',
+    thresholdLimit: 'नियम ७२(१): रु. २० लाखभन्दा कम', category: 'consulting', description: 'ऐन दफा ६क को मौजुदा सूचीमा रहेका consultant बाट प्रस्ताव माग्ने।',
+    legalRef: 'नियम ७२', noticePeriod: 'सम्भव भएसम्म छरितो प्रस्ताव अवधि (नियम ७२)', approvingAuthority: 'परामर्श प्रस्ताव: नियम ८१क अनुसार',
+    steps: ['roster को वर्ग, दर्ता र वार्षिक अद्यावधिक पुष्टि गर्ने', 'TOR, estimate र selection method स्वीकृत गर्ने', 'योग्य roster consultants लाई समान RFP/deadline पठाउने', 'technical/financial proposals निर्धारित विधिमा खोल्ने र मूल्याङ्कन गर्ने', 'committee recommendation, authority approval, negotiation र contract अभिलेख गर्ने'],
+    requiredDocuments: ['roster register, eligibility/renewal proof, TOR, estimate, RFP and dispatch list', 'proposal receipt/opening, score/evaluation report, approval and negotiation/contract'],
+    specialConditions: ['Roster नभएको इच्छुकलाई कानूनले अनुमति दिएको खुला प्रक्रियाबाट सहभागी हुनबाट नरोक्ने'],
+  }),
+  defineMethod({
+    id: 'consultancy-qcbs', name: 'परामर्श छनोट: QCBS', nameEn: 'Quality and Cost Based Selection', thresholdLimit: 'रकम सीमा होइन; quality र cost दुवै weight हुने', category: 'consulting',
+    description: 'RFP मा प्रकाशित technical/financial weight र formula अनुसार संयुक्त score मा छनोट।', legalRef: 'ऐन दफा ३५; नियम ७१(४)(क), ८१(१)', noticePeriod: 'लागू EOI/RFP अवधि', approvingAuthority: 'परामर्श प्रस्तावका लागि नियम ८१क/पद-रकम तालिका',
+    steps: ['TOR complexity अनुसार QCBS rationale र weights स्वीकृत गर्ने', 'minimum technical score र financial formula RFP मा प्रकाशित गर्ने', 'technical proposals खोल्ने, individual score र signed report तयार गर्ने', 'technical report बन्द/स्वीकृत भएपछि qualifying financial proposals मात्र खोल्ने', 'published formula अनुसार combined scores/ranking निकाल्ने', 'negotiation priority, approval र contract अभिलेख गर्ने'],
+    requiredDocuments: ['TOR, approved scoring/weights/formula and RFP', 'individual score sheets, technical report dated before financial opening, financial/combined calculation, minutes and approval'],
+    evaluationProcess: ['technical score RFP को criteria र weight अनुसार गणना गर्ने', 'financial score/normalization formula RFP अनुसार निकाल्ने', 'combined ranking, tie-break र negotiation मा प्रकाशित नियम मात्र लागू गर्ने'],
+    specialConditions: ['लागू मूल्याङ्कन भार तथा सूत्र प्रस्तावसम्बन्धी कागजातमा उल्लेख गरी त्यहीअनुसार लागू गर्ने'],
+  }),
+  defineMethod({
+    id: 'consultancy-qbs', name: 'परामर्श छनोट: QBS', nameEn: 'Quality Based Selection', thresholdLimit: 'अत्यन्त जटिल/उच्च दक्षता चाहिने काम; रकम सीमा होइन', category: 'consulting',
+    description: 'गुणस्तर निर्णायक हुने काममा technical ranking पछि उच्च ranked firm सँग वित्तीय वार्ता।', legalRef: 'ऐन दफा ३५; नियम ७४(१)(ख), ७४(२)', noticePeriod: 'लागू EOI/RFP अवधि', approvingAuthority: 'गुणस्तर विधिका लागि विभागीय प्रमुखको स्वीकृति (नियम ७४(२)); proposal approval: नियम ८१क',
+    steps: ['QBS किन आवश्यक भन्ने complexity/skill rationale स्वीकृत गराउने', 'technical criteria/weight र ranking process RFP मा राख्ने', 'सबै प्रस्तावको technical score र ranking report बनाउने', 'सर्वोच्च-ranked firm सँग financial proposal/price reasonableness वार्ता गर्ने', 'वार्ता असफल भए नियमले अनुमति दिएको कारण/प्रक्रियामा मात्र अर्को firm जाने', 'स्वीकृति, negotiation minutes र contract अभिलेख गर्ने'],
+    requiredDocuments: ['QBS justification, required prior approval, TOR/RFP/scoring criteria', 'score sheets/ranking, financial proposal/benchmark, negotiation record and approval'],
+    evaluationProcess: ['technical quality मात्र प्रकाशित criteria ले rank गर्ने', 'सर्वोच्च rank पछि मात्र financial proposal/वार्ता गर्ने', 'price reasonableness र negotiation outcome अभिलेख गर्ने'],
+    specialConditions: ['उच्च गुणस्तर आवश्यकताको आधार बिना QBS रोज्न नहुने'],
+  }),
+  defineMethod({
+    id: 'consultancy-fbs', name: 'परामर्श छनोट: FBS', nameEn: 'Fixed Budget Selection', thresholdLimit: 'स्वीकृत fixed budget ceiling अनुसार', category: 'consulting',
+    description: 'पूर्वप्रकाशित निश्चित बजेटभित्र highest technical quality proposal छान्ने।', legalRef: 'ऐन दफा ३५(१)(ग); नियम ७१(४)(ख), ८१(३)',
+    noticePeriod: 'लागू RFP अवधि', approvingAuthority: 'नियम ८१क अनुसार',
+    steps: ['scope सो बजेटमा सम्भव भएको cost analysis सहित ceiling स्वीकृत गर्ने', 'RFP मा maximum budget र FBS method खुलाउने', 'पहिले technical score र minimum pass निर्धारण गर्ने', 'योग्य proposals को financial amount ceiling भित्र छ/छैन जाँच्ने', 'बजेट ननाघ्नेमध्ये highest technical score सिफारिस गर्ने', 'approval, negotiation र contract record राख्ने'],
+    requiredDocuments: ['approved fixed budget, affordability analysis, TOR and disclosed RFP ceiling', 'technical report before financial opening, ceiling compliance table, approval and contract'],
+    evaluationProcess: ['technical minimum पार गर्ने प्रस्ताव shortlist गर्ने', 'budget ceiling भन्दा बढी proposal RFP अनुसार अस्वीकार गर्ने', 'budget भित्रको highest technical score छनोट गर्ने'],
+    specialConditions: ['proposal खुलिसकेपछि budget ceiling परिवर्तन गरेर तुलना फेरबदल नगर्ने'],
+  }),
+  defineMethod({
+    id: 'consultancy-lcs', name: 'परामर्श छनोट: LCS', nameEn: 'Least Cost Selection', thresholdLimit: 'साधारण/standardized काममा; रकम सीमा होइन', category: 'consulting',
+    description: 'न्यूनतम technical quality threshold पार गर्ने प्रस्तावमध्ये evaluated cost न्यूनतम भएको छनोट।',
+    legalRef: 'ऐन दफा ३५(१)(घ); नियम ७४(३), ८१(४)', noticePeriod: 'लागू EOI/RFP अवधि', approvingAuthority: 'नियम ८१क अनुसार',
+    steps: ['कम जटिल, standardized TOR र LCS rationale स्वीकृत गर्ने', 'RFP मा technical pass threshold र price evaluation formula प्रकाशित गर्ने', 'technical प्रस्ताव score गरी threshold भन्दा कमलाई रोक्ने', 'pass भएका financial proposals खोली evaluated cost तुलना गर्ने', 'न्यूनतम responsive लागत recommendation/approval गरी contract गर्ने'],
+    requiredDocuments: ['LCS rationale, standard TOR, disclosed technical cutoff and RFP', 'technical score report before financial opening, evaluated cost table, recommendation and approval'],
+    evaluationProcess: ['पहिले technical threshold pass/fail निर्धारण गर्ने', 'threshold पार गर्नेबाट मात्र cost तुलना गर्ने', 'मूल्य खुलेपछि technical cutoff घटबढ नगर्ने'],
+    specialConditions: ['जटिल/high-skill consultancy मा LCS उपयुक्त नहुन सक्छ'],
+  }),
+  defineMethod({
+    id: 'consultancy-negotiation', name: 'परामर्श: तालिम/गोष्ठी/सेमिनार वार्ता', nameEn: 'Negotiated Training and Seminar Services',
+    thresholdLimit: 'नियम ८२(१): रु. ५ लाखसम्म निकाय प्रमुख; सोभन्दा बढी रु. २० लाखसम्म एक तह माथिको स्वीकृति', category: 'consulting',
+    description: 'नियम ८२ मा समेटिएका तालिम/गोष्ठी/सेमिनार services मा मात्र सीमित negotiated procurement।', legalRef: 'नियम ८२',
+    noticePeriod: 'नियम ८२(२) अनुसार रु. २० लाखसम्म कम्तीमा तीन प्रस्ताव', approvingAuthority: 'नियम ८२(१) अनुसार',
+    steps: ['कार्यक्रम नियम ८२ मा पर्छ र कुल आवश्यकता जोड्दा रकम सीमा भित्र छ भनी पुष्टि गर्ने', 'TOR, participant/output, trainer skill र estimate स्वीकृत गर्ने', 'लागू रकममा कम्तीमा तीन proposal लिई समान आधारमा तुलना गर्ने', 'technical fit, agenda, trainer, deliverables र itemized price जाँच्ने', 'अधिकारप्राप्त अधिकारीबाट negotiation र written approval लिने', 'attendance/output प्रमाणित गरी मात्र invoice/payment गर्ने'],
+    requiredDocuments: ['training TOR, need/budget, estimate, method/threshold justification', 'three proposals where applicable, comparative evaluation, negotiation minutes, approval and completion evidence'],
+    evaluationProcess: ['प्रस्तावित curricula/trainer र delivery plan प्रकाशित criteria ले मूल्याङ्कन गर्ने', 'itemized rates benchmark गरी negotiation record राख्ने', 'सम्पन्न deliverables verify गरेपछि मात्र भुक्तानी गर्ने'],
+    specialConditions: ['नियम ८२ मा उल्लेखित तालिम, गोष्ठी वा सेमिनार सेवामा मात्र लागू गर्ने'],
+  }),
+  defineMethod({
+    id: 'consultancy-single-source', name: 'परामर्श: Single/Sole Source', nameEn: 'Single-Source Consultant Selection',
+    thresholdLimit: 'रकम सीमा तोकिएको छैन; नियम ८३ को अपवाद प्रमाणित भएमा', category: 'consulting',
+    description: 'एकमात्र qualified consultant, विशेष expertise वा नियममा तोकिएका exceptional grounds मा मात्र।', legalRef: 'नियम ८३', noticePeriod: 'नियम ८३ र लागू approval procedure अनुसार',
+    approvingAuthority: 'नियम ८३ तथा निकायको delegation अनुसार सक्षम अधिकारी',
+    steps: ['कानूनी ground र अन्य consultant/विकल्प अनुपलब्ध भएको प्रमाण बनाउने', 'TOR, cost estimate, qualification र conflict check स्वीकृत गर्ने', 'बजार benchmark र price negotiation strategy तयार गर्ने', 'वार्ता र scope/price सहमतिका minutes राख्ने', 'कारणयुक्त approval, contract, output acceptance र publication पूरा गर्ने'],
+    requiredDocuments: ['sole-source legal ground, market search, unique expertise/continuity evidence', 'TOR, estimate, COI declaration, price benchmark, negotiation minutes and approval'],
+    evaluationProcess: ['exception eligibility पहिले पास/fail निर्णय गर्ने', 'consultant qualification र price reasonableness स्वतन्त्र रूपमा जाँच्ने', 'कारणयुक्त recommendation/approval record राख्ने'],
+    specialConditions: ['short timeline वा incumbent consultant हुनु मात्रै sole-source आधार होइन'],
+  }),
+  defineMethod({
+    id: 'direct-consulting-other', name: 'सोझै खरिद: परामर्श/अन्य सेवा', nameEn: 'Direct Procurement for Consulting and Other Services',
+    thresholdLimit: 'नियम ८५(१)(क१): रु. ५ लाखसम्म', category: 'consulting',
+    description: 'नियम ८५ को रकम र अवस्थाभित्र सीमित परामर्श वा अन्य सेवा सोझै खरिद।',
+    legalRef: 'ऐन दफा ४१; नियम ८५(१)(क१)', noticePeriod: 'नियम ८५(६) अनुसार प्रकृति/कारण/आधारसहित सार्वजनिक सूचना',
+    approvingAuthority: 'निकाय प्रमुख/अधिकारप्राप्त अधिकारी',
+    steps: ['सेवाको आवश्यकता, TOR, output र लागत अनुमान स्वीकृत गर्ने', 'नियम ८५ को अपवाद/सीमा लागू हुने कारण जाँच्ने', 'consultant/provider योग्यता, conflict र बजार दर परीक्षण गर्ने', 'कारणसहित छनोट/approval र लिखित करार गर्ने', 'deliverable स्वीकार गरी बिल/कर/भुक्तानी अभिलेख गर्ने'],
+    requiredDocuments: ['TOR, estimate, provider qualification, direct-method rationale, price evidence', 'approval, conflict declaration, contract, deliverable acceptance and payment record'],
+    evaluationProcess: ['लागू अपवाद eligibility पहिले पुष्टि गर्ने', 'गुणस्तर/output र rate reasonableness जाँच्ने', 'कारणयुक्त छनोट र approval record राख्ने'],
+    specialConditions: ['सामान्य विशेषज्ञ सेवाको competitive selection लाई direct service भनेर वर्गीकरण नगर्ने'],
+  }),
+  defineMethod({
+    id: 'direct-authorized-repair', name: 'सोझै खरिद: गाडी/मेसिनरी अधिकृत मर्मत', nameEn: 'Authorized Vehicle and Machinery Repair',
+    thresholdLimit: 'नियम ८५(१)(क२): रु. ५ लाखसम्म', category: 'other', description: 'अधिकृत सेवा केन्द्रमार्फत योग्य गाडी/मेसिनरी मर्मत।',
+    legalRef: 'नियम ८५(१)(क२)', noticePeriod: 'नियम ८५(६) अनुसार प्रकृति/कारण/आधारसहित सार्वजनिक सूचना', approvingAuthority: 'नियम १४ तथा ८५ अनुसार',
+    steps: ['asset, warranty र diagnosis निश्चित गर्ने', 'authorized service-centre प्रमाण र repair estimate लिने', 'मूल्य/कामको दायरा र direct-route eligibility जाँच्ने', 'approval पछि repair order दिने', 'मर्मत/parts परीक्षण, invoice र asset record अद्यावधिक गर्ने'],
+    requiredDocuments: ['asset register, diagnosis, authorized centre proof, estimate and price analysis', 'method justification, approval, repair order, inspection and invoice'],
+    specialConditions: ['नियम ८५(१)(क२) मा उल्लेखित अधिकृत सेवा केन्द्रबाट मात्र मर्मत गराउने'],
+  }),
+  defineMethod({
+    id: 'direct-it-maintenance', name: 'सोझै खरिद: वेबसाइट/सफ्टवेयर/IT मर्मत', nameEn: 'Website, Software and IT Maintenance',
+    thresholdLimit: 'नियम ८५(१)(क३): रु. ५ लाखसम्म', category: 'other', description: 'वेबसाइट/software/IT maintenance मा नियमको विशेष direct route लागू भएमा।',
+    legalRef: 'नियम ८५(१)(क३)', noticePeriod: 'नियम ८५(६) अनुसार प्रकृति/कारण/आधारसहित सार्वजनिक सूचना', approvingAuthority: 'नियम १४ तथा ८५ अनुसार',
+    steps: ['मौजुदा license, rights र maintenance आवश्यकता जाँच्ने', 'scope, SLA, deliverable र estimate स्वीकृत गर्ने', 'provider exclusivity/eligibility को आधार र alternatives अध्ययन गर्ने', 'approval तथा security/access condition सहित लिखित सम्झौता गर्ने', 'काम स्वीकार, access log र invoice जाँच्ने'],
+    requiredDocuments: ['IT asset/license inventory, TOR/SLA, estimate, compatibility/sole-provider evidence', 'alternatives and rate study, approval, access/security terms, service report and acceptance'],
+    specialConditions: ['ब्रान्ड/प्रणालीको नाम मात्र दिएर प्रतिस्पर्धा हटाउन नहुने'],
+  }),
+  defineMethod({
+    id: 'special-circumstances', name: 'विशेष परिस्थितिमा आकस्मिक खरिद', nameEn: 'Emergency Procurement',
+    thresholdLimit: 'सामान्य रकम सीमा होइन; ऐनको आकस्मिक अवस्था प्रमाणित हुनुपर्ने', category: 'other',
+    description: 'तत्काल खरिद नगर्दा थप हानि/क्षति हुने वास्तविक विशेष परिस्थितिमा आवश्यक न्यूनतम खरिद।',
+    legalRef: 'ऐन दफा ६६', noticePeriod: 'लागू दफा ६६ प्रक्रिया; तत्काल जोखिम नियन्त्रण आवश्यकताअनुसार',
+    approvingAuthority: 'सार्वजनिक निकायको प्रमुख; एक तह माथि विस्तृत जानकारी दिने',
+    steps: ['विपद्/आकस्मिक घटना र ढिलाइबाट हुने थप क्षति प्रमाणित गर्ने', 'तत्काल रोकथामका लागि आवश्यक न्यूनतम scope/quantity तय गर्ने', 'सम्भव भएसम्म मूल्य तुलना र उपलब्ध supplier record राख्ने', 'कारण, रकम र स्वीकृति मिसिल गरी काम/आपूर्ति गर्ने', 'परिस्थिति र तत्काल खरिदको विस्तृत विवरण माथिल्लो तहलाई पठाउने', 'आपतकालपछिको बाँकी आवश्यकता सामान्य प्रतिस्पर्धाबाट खरिद गर्ने'],
+    requiredDocuments: ['आपतकाल प्रमाण/घटना विवरण, तत्काल आवश्यकता, scope/quantity, उपलब्ध बजार मूल्य', 'कारणयुक्त approval, आदेश/सम्झौता, delivery/inspection, bill and higher-authority report'],
+    specialConditions: ['नियमित योजना, बजेट अभाव वा साधारण ढिलाइलाई emergency भन्न मिल्दैन'],
+  }),
+  defineMethod({
+    id: 'force-account', name: 'अमानत (Force Account)', nameEn: 'Force Account Procurement',
+    thresholdLimit: 'रकम सीमा/योग्यता लागू नियमबाट निर्धारण गर्नुपर्ने', category: 'works',
+    description: 'नियमले अनुमति दिएको सीमित अवस्थामा निकायको आफ्नै जनशक्ति/स्रोतबाट काम गराउने।',
+    legalRef: 'अमानतसम्बन्धी ठ्याक्कै दफा/नियम हाल लागू आधिकारिक पाठबाट पुष्टि गर्नुहोस्',
+    noticePeriod: 'लागू अमानत व्यवस्था अनुसार', approvingAuthority: 'अधिकारप्राप्त निकाय प्रमुख तथा आवश्यक उच्च-तह स्वीकृति',
+    steps: ['अमानत विधि अपनाउने कानूनी/प्राविधिक आधार अभिलेख गर्ने', 'आफ्नै जनशक्ति, उपकरण र लागत अनुमान पुष्टि गर्ने', 'मात्रा, लागत, समय, सुरक्षा र supervision plan स्वीकृत गर्ने', 'दैनिक नापजाँच, सामग्री निर्गम र खर्चको अभिलेख राख्ने', 'गुणस्तर परीक्षण, कार्यसम्पन्नता र वास्तविक लागत फरफारक गर्ने'],
+    requiredDocuments: ['method justification, own-resource inventory/capacity, approved estimate and work plan', 'material issue/measurement log, supervision, quality tests, completion and cost reconciliation'],
+    specialConditions: ['contractor procurement बाट बच्न अमानत भनेर बाह्य contractor लाई काम दिन नहुने'],
+  })
+];
+
+export const PROCUREMENT_METHODS: ProcurementMethod[] = PROCUREMENT_METHODS_SOURCE.map((method) =>
+  method.id === 'sealed-quotation'
+    ? {
+        ...method,
+        specialConditions: [
+          'पहिलो सूचनामा तीनभन्दा कम दरभाउ वा कुनै दरभाउ नआए नियम ८४(३क) अनुसार दोस्रो सूचना प्रकाशन गर्ने; दोस्रो सूचनापछि प्राप्त प्रस्तावबाट छनोट गर्न सकिन्छ',
+          'कामलाई टुक्र्याएर दरभाउमा लैजान निषेध',
+        ],
+      }
+    : method
+);
+
+const COMPLIANCE_CHECKLIST_SOURCE: ChecklistItem[] = [
+  // Stage 1
+  {
+    id: 'chk-1',
+    stageId: 1,
+    question: 'के यस आर्थिक वर्षको लागि वार्षिक खरिद योजना (Annual Procurement Plan) तयार गरी कार्यालय प्रमुखबाट स्वीकृत गराइएको छ?',
+    questionEn: 'Has the Annual Procurement Plan been prepared and approved by the Head of the Public Entity?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा ७; नियमावली नियम ७, ८',
+    category: 'योजना तथा बजेट',
+    isMandatory: true,
+    helpText: 'वार्षिक खरिद योजना विना गरिएको खरिद सिधै अनियमित र बेरुजु ठहरिन्छ।'
+  },
+  {
+    id: 'chk-2',
+    stageId: 1,
+    question: 'के खरिद सीमा वा प्रतिस्पर्धा छल्ने उद्देश्यले कामलाई अस्वाभाविक रूपमा साना-साना टुक्रामा विभाजन गरिएको छैन?',
+    questionEn: 'Is it verified that works or goods have NOT been fragmented to avoid competitive thresholds?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा ८(२)',
+    category: 'प्रतिस्पर्धा सुनिश्चितता',
+    isMandatory: true,
+    helpText: 'योजनाबद्ध रूपमा एकमुष्ट खरिद गर्नुपर्ने कार्यलाई टुक्र्याएर सोझै वा दरभाउमा लैजानु दफा ८ विपरित हुन्छ।'
+  },
+  {
+    id: 'chk-3',
+    stageId: 1,
+    question: 'के खरिद सम्बन्धी सम्पूर्ण कार्य हेर्न खरिद एकाइ (Procurement Unit) वा जिम्मेवार खरिद अधिकृत तोकिएको छ?',
+    questionEn: 'Has a dedicated Procurement Unit or Procurement Officer been designated?',
+    legalRef: 'सार्वजनिक खरिद नियमावली, २०६४ नियम ६',
+    category: 'प्रशासनिक व्यवस्था',
+    isMandatory: true,
+    helpText: 'खरिद सम्बन्धी काम कारबाहीको अभिलेख र सञ्चालन गर्न छुट्टै कर्मचारी तोकिनुपर्छ।'
+  },
+  // Stage 2
+  {
+    id: 'chk-4',
+    stageId: 2,
+    question: 'के लागत अनुमान चालु आर्थिक वर्षको स्वीकृत जिल्ला दररेट र स्वीकृत नर्म्सका आधारमा तयार गरिएको छ?',
+    questionEn: 'Is the cost estimate prepared using the approved district rates of the current FY and standard norms?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा ५; नियमावली नियम ९-१४',
+    category: 'लागत अनुमान',
+    isMandatory: true,
+    helpText: 'पुरानो वर्षको वा आफूखुसी बजार दर राखेर लागत अनुमान बनाउन पाइँदैन।'
+  },
+  {
+    id: 'chk-5',
+    stageId: 2,
+    question: 'के स्पेसिफिकेसनमा कुनै विशेष कम्पनी वा ब्राण्ड नाम (Brand/Trademark) उल्लेख नगरिएको सुनिश्चित गरिएको छ?',
+    questionEn: 'Is it ensured that technical specifications do not cite proprietary brands or trademarks?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा ४(३)',
+    category: 'स्पेसिफिकेसन',
+    isMandatory: true,
+    helpText: 'कुनै ब्रान्ड नाम खुलाउनु परेमा "वा सो सरह (or equivalent)" अनिवार्य लेखिनुपर्छ।'
+  },
+  {
+    id: 'chk-6',
+    stageId: 2,
+    question: 'के लागत अनुमान आर्थिक अधिकार प्राप्त सक्षम अधिकारी (Approving Authority) बाट विधिवत स्वीकृत छ?',
+    questionEn: 'Has the cost estimate been formally approved by the authorized financial official?',
+    legalRef: 'सार्वजनिक खरिद नियमावली, २०६४ नियम १२',
+    category: 'स्वीकृति',
+    isMandatory: true,
+    helpText: 'अधिकार क्षेत्र नाघेर तल्लो तहबाट लागत अनुमान स्वीकृत गर्नु आर्थिक कार्यविधि ऐन विपरित हुन्छ।'
+  },
+  // Stage 3 & 4
+  {
+    id: 'chk-7',
+    stageId: 3,
+    question: 'के सार्वजनिक खरिद अनुगमन कार्यालय (PPMO) को पछिल्लो मानक बोलपत्र कागजात (SBD) प्रयोग गरिएको छ?',
+    questionEn: 'Are the latest Standard Bidding Documents (SBD) issued by PPMO strictly utilized?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा १३; नियमावली नियम १८',
+    category: 'बोलपत्र कागजात',
+    isMandatory: true,
+    helpText: 'निकायले आफ्नै मनगढन्ते ढाँचा प्रयोग गर्न पाउँदैन, PPMO को ढाँचा बाध्यकारी छ।'
+  },
+  {
+    id: 'chk-8',
+    stageId: 4,
+    question: 'के बोलपत्रको सूचना राष्ट्रिय दैनिक पत्रिका तथा e-GP प्रणालीमा तोकिएको पूर्ण म्याद (३० दिन/१५ दिन) दिई प्रकाशन गरिएको छ?',
+    questionEn: 'Was the invitation published in a national daily newspaper & e-GP with full mandatory days (30/15 days)?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा १४; नियमावली नियम ३१',
+    category: 'सूचना प्रकाशन',
+    isMandatory: true,
+    helpText: 'प्रकाशन भएको दिन र दाखिला हुने अन्तिम दिन गणना गर्दा बीचको कार्यदिन पूर्ण ३० वा १५ दिन हुनुपर्छ।'
+  },
+  // Stage 5 & 6
+  {
+    id: 'chk-9',
+    stageId: 5,
+    question: 'के बोलपत्र दाखिला समय समाप्त हुनासाथ उपस्थित बोलपत्रदाता वा उनका प्रतिनिधिको रोहवरमा बोलपत्र खोलिएको छ?',
+    questionEn: 'Were the bids opened publicly right after the submission deadline in presence of representatives?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा २२; नियमावली नियम ६२',
+    category: 'बोलपत्र खोल्ने',
+    isMandatory: true,
+    helpText: 'खोल्ने मिति र समय सार्न वा गोप्य कोठामा खोलेर मुचुल्का बनाउन पाइँदैन।'
+  },
+  {
+    id: 'chk-10',
+    stageId: 6,
+    question: 'के ऐनको दफा २३ बमोजिमको आधिकारिक मूल्यांकन समिति (Evaluation Committee) ले मात्र प्रतिवेदन तयार गरी हस्ताक्षर गरेको छ?',
+    questionEn: 'Has the official Tender Evaluation Committee evaluated bids and signed the evaluation report?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा २३; नियमावली नियम ६४-६६',
+    category: 'मूल्यांकन',
+    isMandatory: true,
+    helpText: 'समितिमा कार्यालय प्रमुख, प्राविधिक अधिकृत, लेखा प्रमुख र कानून/सम्बन्धित मन्त्रालयको प्रतिनिधि रहन्छन्।'
+  },
+  {
+    id: 'chk-11',
+    stageId: 6,
+    question: 'के लागत अनुमान भन्दा १५% भन्दा बढी घटेको बोलपत्रदाताबाट अतिरिक्त कार्यसम्पादन जमानत (Additional Performance Security) मागिएको छ?',
+    questionEn: 'Is additional performance security calculated and required for bids lower than 15% of the estimate?',
+    legalRef: 'सार्वजनिक खरिद नियमावली, २०६४ नियम ६६ तथा संशोधनहरू',
+    category: 'जमानत परीक्षण',
+    isMandatory: true,
+    helpText: 'लागत अनुमान भन्दा १५% सम्म घटेमा ५%, सो भन्दा बढी घटेको रकमको ५०% थप धरौटी लिइनुपर्छ।'
+  },
+  // Stage 7 & 8
+  {
+    id: 'chk-12',
+    stageId: 7,
+    question: 'के बोलपत्र स्वीकृत गर्नु अगावै ७ दिने आशयको सूचना (Letter of Intent - LoI) राष्ट्रिय दैनिक र e-GP मा प्रकाशित गरियो?',
+    questionEn: 'Was the 7-day Letter of Intent (LoI) published before awarding the contract?',
+    legalRef: 'सार्वजनिक खरिद ऐन, २०६३ दफा २७(२); नियमावली नियम ७८',
+    category: 'सम्झौता पूर्व',
+    isMandatory: true,
+    helpText: 'LoI बिना गरिएको सम्झौता स्वतः कानूनी रूपमा बदरभागी हुन्छ।'
+  },
+  {
+    id: 'chk-13',
+    stageId: 7,
+    question: 'के कार्यसम्पादन जमानत (Performance Bank Guarantee) को आधिकारिकता सम्बन्धित बैंकबाट कन्फर्मेसन (Verification) लिइयो?',
+    questionEn: 'Has the authenticity of the Performance Bank Guarantee been confirmed directly with the issuing bank?',
+    legalRef: 'PPMO को परिपत्र तथा सुशासन मापदण्ड',
+    category: 'बैंक जमानत',
+    isMandatory: true,
+    helpText: 'नक्कली बैंक ग्यारेन्टी पेश हुने जोखिम नियन्त्रण गर्न बैंकबाट सिधै लिखित पुष्टि लिनु अनिवार्य छ।'
+  },
+  {
+    id: 'chk-14',
+    stageId: 8,
+    question: 'के नापी किताब (Measurement Book - MB) मा फिल्डमै नापजाँच गरी प्राविधिक र कार्यालय प्रमुखबाट प्रमाणित गरिएको छ?',
+    questionEn: 'Is the Measurement Book (MB) verified and signed on site by technical staff before payment?',
+    legalRef: 'सार्वजनिक खरिद नियमावली, २०६४ नियम १२३',
+    category: 'बिल भुक्तानी',
+    isMandatory: true,
+    helpText: 'MB विना गरिएको भुक्तानी महालेखाको लेखापरीक्षणमा असुलउपर हुने बेरुजुमा परिणत हुन्छ।'
+  },
+  {
+    id: 'chk-15',
+    stageId: 8,
+    question: 'के निर्माण सम्पन्न पश्चात स्थानीय सरोकारवालाहरूको उपस्थितिमा सार्वजनिक परीक्षण (Public Audit) सम्पन्न गरिएको छ?',
+    questionEn: 'Has the mandatory Public Audit been conducted with local stakeholders upon completion?',
+    legalRef: 'सुशासन (व्यवस्थापन तथा सञ्चालन) ऐन, २०६४ दफा ३१ र खरिद निर्देशिका',
+    category: 'सार्वजनिक उत्तरदायित्व',
+    isMandatory: false,
+    helpText: 'जहाँ नियम, करार वा लागू निर्देशिकाले माग गर्छ, त्यहाँ सार्वजनिक परीक्षणको प्रमाण राख्नुहोस्।'
+  },
+  {
+    id: 'chk-16', stageId: 9,
+    question: 'के रोजिएको procurement method खरिदको प्रकृति/कुल लागतसँग मिल्छ र त्यसको कानूनी आधार तथा स्वीकृत अधिकारीको सीमा लिखित छ?',
+    questionEn: 'Is the method appropriate to the nature and total estimated value, with written legal justification and competent approval?',
+    legalRef: 'ऐन दफा ८; छानिएको विधिको लागू नियम', category: 'विधि छनोट/अधिकार', isMandatory: true,
+    helpText: 'Matrix रकमसीमा र authority нь эх сурвалжид суурилсан тул हालको राजपत्र/PPMO र निकायको delegation सँग रुजु गर्नुहोस्।'
+  },
+  {
+    id: 'chk-17', stageId: 9,
+    question: 'सोझै मालसामान/निर्माण वा सेवा खरिदमा लागू उपसीमा, वार्षिक जम्मा, आवश्यक quotations, बजार मूल्य र अपवादको प्रमाण जाँचिएको छ?',
+    questionEn: 'Are direct-purchase sublimits, annual aggregation, required quotations, market price and exception grounds evidenced?',
+    legalRef: 'ऐन दफा ४१; नियम ८५', category: 'सोझै खरिद', isMandatory: true,
+    helpText: 'नियम ८५ का वस्तु/कार्य/सेवाअनुसारका सीमा, वार्षिक जम्मा र दरभाउका शर्त लागू गरी खरिद टुक्रेकरण नगर्नुहोस्।'
+  },
+  {
+    id: 'chk-18', stageId: 9,
+    question: 'सिलबन्दी दरभाउ वा वस्तु-विशेष threshold प्रयोग गर्दा विधि-योग्यता, सूचना म्याद, responsive bids र कम प्रस्ताव आएपछिको कदम लागू नियमबाट पुष्टि गरिएको छ?',
+    questionEn: 'For sealed quotations and item-specific thresholds, have eligibility, notice period, responsive bids and re-invitation requirements been verified?',
+    legalRef: 'ऐन दफा ४०; नियम ८४', category: 'दरभाउपत्र', isMandatory: true,
+    helpText: 'औषधिजन्य/स्वास्थ्य उपकरणको विशेष सीमा सामान्य मालसामानमा लागू नगर्नुहोस्।'
+  },
+  {
+    id: 'chk-19', stageId: 9,
+    question: 'सीमित बोलपत्र, catalogue shopping, e-Marketplace वा reverse auction मा channel eligibility, बजार/मूल्य प्रमाण, समान अवसर र electronic audit log छन्?',
+    questionEn: 'Do limited tendering, catalogue shopping, marketplace or reverse auction have eligibility evidence, price support, equal access and an audit trail?',
+    legalRef: 'नियम ३१ख, ३१ग, ३१ञ, ८६क', category: 'वैकल्पिक प्रतिस्पर्धा', isMandatory: true,
+    helpText: 'सीमित supplier संख्या वा catalogue price दाबीलाई स्वतन्त्र प्रमाण/सिस्टम अभिलेखबाट समर्थन गर्नुहोस्।'
+  },
+  {
+    id: 'chk-20', stageId: 9,
+    question: 'Proprietary/sole-source वा विशेष औषधि route मा exclusive-right/qualification, विकल्प खोज, बजार benchmark र कारणयुक्त approval छ?',
+    questionEn: 'Are exclusivity/qualification, alternatives search, market benchmark and reasoned approval documented for proprietary or sole-source goods?',
+    legalRef: 'नियम ८५(१ख१), ८५(३), (३क)', category: 'एकल स्रोत', isMandatory: true,
+    helpText: 'ब्रान्ड उल्लेख/सामान्य compatibility वा छोटो समयसीमा मात्र अपवादको आधार हुँदैन।'
+  },
+  {
+    id: 'chk-21', stageId: 9,
+    question: 'Buy-back मा पुरानो सम्पत्तिको मूल्याङ्कन, नयाँ वस्तुको मूल्य र buy-back credit छुट्टाछुट्टै देखाई net evaluated cost तुलना गरिएको छ?',
+    questionEn: 'Does the buy-back evaluation separately show the old asset valuation, new price and credit, then compare net evaluated cost?',
+    legalRef: 'नियम ३१घ', category: 'बाई-ब्याक', isMandatory: true,
+    helpText: 'Trade-in रकमले नयाँ खरिदको gross price वा सम्पत्तिको वास्तविक मूल्य लुकाउन नदिनुहोस्।'
+  },
+  {
+    id: 'chk-22', stageId: 9,
+    question: 'उपभोक्ता समिति/लाभग्राही समुदाय वा अमानत route मा eligibility, आफ्नै/समुदाय स्रोत, खुला निर्णय, लागत साझेदारी र नापजाँच अभिलेख छन्?',
+    questionEn: 'Are eligibility, own/community resources, open decision-making, cost sharing and measurement evidenced for users committees or force account?',
+    legalRef: 'ऐन दफा ४४, ४५; नियम ९७ तथा अमानतको लागू व्यवस्था', category: 'समुदाय/अमानत', isMandatory: true,
+    helpText: 'अमानतको exact सीमा/दफा र समिति नियम लागू official पाठबाट पुष्टि गर्नुहोस्।'
+  },
+  {
+    id: 'chk-23', stageId: 9,
+    question: 'राशन खरिदमा माग/scale, नियमअनुसार समिति, बजार दरसहित estimate तथा lot-wise तौल, गुणस्तर, expiry र भण्डार मिलान गरिएको छ?',
+    questionEn: 'Does ration procurement evidence demand, approved scale/committee, market-based estimate and lot-wise quantity/quality/stock reconciliation?',
+    legalRef: 'नियम ८८–९३', category: 'राशन', isMandatory: true,
+    helpText: 'नियम ८८(२) अनुसार लागत अनुमान समिति गठन गरी राशन खरिदका अभिलेख राख्नुहोस्।'
+  },
+  {
+    id: 'chk-24', stageId: 9,
+    question: 'घर-जग्गा lease वा दैनिक सेवा करारमा committee/market valuation, भौगोलिक/वार्षिक threshold, SLA र कुल अवधि-लागत जाँचिएको छ?',
+    questionEn: 'Are committee/market valuation, location-specific lease limits, service SLA and full-term cost checked for leases and daily-service contracts?',
+    legalRef: 'नियम ९४–९५', category: 'भाडा/सेवा करार', isMandatory: true,
+    helpText: 'घरभाडाको रकम/सूचना नियम ९४ र दैनिक सेवा करारको सीमा/सूचना नियम ९५ अनुसार लागू गर्नुहोस्।'
+  },
+  {
+    id: 'chk-25', stageId: 9,
+    question: 'दफा ६६ को special-circumstances खरिदमा आकस्मिक हानि, न्यूनतम आवश्यक scope, मूल्य औचित्य, approval र माथिल्लो तहलाई विवरण दिने प्रमाण छ?',
+    questionEn: 'Does emergency procurement evidence urgent harm, minimum scope, price reasonableness, approval and reporting to the next authority?',
+    legalRef: 'ऐन दफा ६६', category: 'विशेष परिस्थिति', isMandatory: true,
+    helpText: 'Routine planning delay वा budget shortage लाई emergency भनेर प्रतिस्पर्धा छल्न मिल्दैन।'
+  },
+  {
+    id: 'chk-26', stageId: 9,
+    question: 'Design-Build/EPC मा feasibility, conceptual design, output/performance specification, risk allocation र परीक्षण/defect obligations करारमा स्पष्ट छन्?',
+    questionEn: 'Do Design-Build/EPC procurements document feasibility, conceptual design, output requirements, risk allocation and testing/defect obligations?',
+    legalRef: 'नियम ३; २२(२), (३)', category: 'EPC/Design-Build', isMandatory: true,
+    helpText: 'नियम २२(२)–(३) अनुसार design-build/EPC करारमा कम्तीमा पाँच वर्षको त्रुटि-सच्याउने अवधि खुलाउनुहोस्।'
+  },
+  {
+    id: 'chk-27', stageId: 9,
+    question: 'Framework agreement मा competitive selection, अवधि/ceiling, call-off allocation र cumulative commitment को नियन्त्रण स्पष्ट छ?',
+    questionEn: 'Does a framework agreement define open selection, duration/value ceiling, call-off allocation and cumulative-commitment controls?',
+    legalRef: 'नियम २१क', category: 'Framework/call-off', isMandatory: true,
+    helpText: 'Framework सम्झौता असीमित खरिदको स्वीकृति होइन।'
+  },
+  {
+    id: 'chk-28', stageId: 9,
+    question: 'बोलपत्र/दरभाउ रद्द वा पुनःआह्वान गर्दा कारणयुक्त निर्णय, सबै सहभागीलाई सूचना र नयाँ/अपरिवर्तित मापदण्डको अभिलेख छ?',
+    questionEn: 'Are reasoned cancellation/re-tender decisions, bidder notifications and consistently applied criteria recorded?',
+    legalRef: 'ऐन दफा २६; सम्बन्धित विधिको नियम', category: 'पुनःबोलपत्र', isMandatory: true,
+    helpText: 'Уучлалтгүйгээр өөрчлөгдсөн criteria нь өрсөлдөөнд нөлөөлж болзошгүй; шинэ кагजात approval राख्नुहोस्।'
+  },
+  {
+    id: 'chk-29', stageId: 10,
+    question: 'परामर्श विधि (QCBS/QBS/FBS/LCS/roster/direct/sole-source) TOR/complexity अनुसार छानी त्यसको कारण र सक्षम अधिकारीको approval लिइएको छ?',
+    questionEn: 'Is the consultant-selection method suited to the TOR and complexity, with written justification and competent approval?',
+    legalRef: 'ऐन दफा ३०–३५; नियम ७०–८३, ८१क', category: 'परामर्श विधि', isMandatory: true,
+    helpText: 'सबै consultancy मा QCBS वा एउटै weight स्वतः लागू हुँदैन।'
+  },
+  {
+    id: 'chk-30', stageId: 10,
+    question: 'EOI/roster route, रकम threshold, सार्वजनिक notice, shortlist criteria र consultant लाई समान RFP वितरणको प्रमाण छ?',
+    questionEn: 'Are the applicable EOI/roster thresholds, notice, shortlist criteria and equal RFP dispatch evidenced?',
+    legalRef: 'नियम ७०, ७२', category: 'EOI/shortlist', isMandatory: true,
+    helpText: 'EOI तथा roster को रकम र सूचना प्रक्रिया नियम ७० र ७२ अनुसार लागू गर्नुहोस्।'
+  },
+  {
+    id: 'chk-31', stageId: 10,
+    question: 'QCBS मा technical/financial weights, normalization, cutoff र tie-break proposal खोल्नुअघि RFP मा तोकी त्यही formula पुनर्गणना गरिएको छ?',
+    questionEn: 'For QCBS, were weights, normalization, cutoff and tie-break disclosed in the RFP and recalculated exactly as published?',
+    legalRef: 'ऐन दफा ३५; नियम ७१(४)(क), ८१(१)', category: 'QCBS', isMandatory: true,
+    helpText: '८०:२० वा ९०:१० लाई सबै consultancy मा अनिवार्य अनुपात नमान्नुहोस्।'
+  },
+  {
+    id: 'chk-32', stageId: 10,
+    question: 'QBS मा उच्च विशेषज्ञता/जटिलताको औचित्य र prior approval छ; technical ranking पछि मात्र वित्तीय वार्ता गरिएको छ?',
+    questionEn: 'For QBS, are complexity grounds and prior approval documented, with financial negotiation only after technical ranking?',
+    legalRef: 'ऐन दफा ३५; नियम ७४(१)(ख), (२)', category: 'QBS', isMandatory: true,
+    helpText: 'वित्तीय प्रस्ताव/वार्ताको क्रम लागू RFP र हालको नियमअनुसार पालना गर्नुहोस्।'
+  },
+  {
+    id: 'chk-33', stageId: 10,
+    question: 'FBS मा निश्चित बजेट proposal खोल्नुअघि स्वीकृत/प्रकाशित छ र budget भित्रको highest technical score मात्र छनोट गरिएको छ?',
+    questionEn: 'For FBS, was the fixed budget approved/disclosed before opening and the highest technical score within budget selected?',
+    legalRef: 'ऐन दफा ३५(१)(ग); नियम ७१(४)(ख), ८१(३)', category: 'FBS', isMandatory: true,
+    helpText: 'Proposal खुलिसकेपछि ceiling बदल्न नहुने; affordability record राख्नुहोस्।'
+  },
+  {
+    id: 'chk-34', stageId: 10,
+    question: 'LCS लाई साधारण/standardized काममा मात्रै प्रयोग गरी न्यूनतम technical threshold पार गरेका proposal बाट कम evaluated cost छानिएको छ?',
+    questionEn: 'Is LCS limited to routine/standard work and selected only among technically qualified proposals by evaluated cost?',
+    legalRef: 'ऐन दफा ३५(१)(घ); नियम ७४(३), ८१(४)', category: 'LCS', isMandatory: true,
+    helpText: 'जटिल/उच्च-विशेषज्ञता काममा LCS उपयुक्त नहुन सक्छ।'
+  },
+  {
+    id: 'chk-35', stageId: 10,
+    question: 'Consulting single-source वा negotiation मा नियमगत अपवाद, विकल्प खोज, मूल्य benchmark, conflict जाँच र लिखित approval छ?',
+    questionEn: 'Do consulting single-source/negotiated selections evidence a legal exception, alternatives search, price benchmark, conflict check and written approval?',
+    legalRef: 'नियम ८२–८३', category: 'परामर्श वार्ता', isMandatory: true,
+    helpText: 'Incumbent हुनु वा छोटो समयसीमा मात्र sole-source आधार होइन।'
+  },
+  {
+    id: 'chk-36', stageId: 10,
+    question: 'मूल्याङ्कन report, लागू award authority, negotiation, insurance (लागू भए), contract र सार्वजनिक सूचना अभिलेख पूरा छन्?',
+    questionEn: 'Are the evaluation report, competent award approval, negotiation, applicable insurance, contract and disclosures complete?',
+    legalRef: 'नियम ८१(७), ८१क', category: 'परामर्श award', isMandatory: true,
+    helpText: 'मूल्याङ्कन अधिकारी र लागत अनुमान स्वीकृत गर्ने अधिकारी फरक हुन सक्छन्।'
+  }
+];
+
+export const COMPLIANCE_CHECKLIST: ChecklistItem[] = COMPLIANCE_CHECKLIST_SOURCE.map((item) => {
+  switch (item.id) {
+    case 'chk-1':
+      return { ...item, legalRef: 'ऐन दफा ७; नियम ८' };
+    case 'chk-3':
+      return { ...item, legalRef: 'ऐन दफा ७; नियम १६' };
+    case 'chk-6':
+      return { ...item, legalRef: 'नियम १४' };
+    case 'chk-8':
+      return {
+        ...item,
+        question: 'के छानिएको विधि/SBD अनुसार सूचना प्रकाशन र प्रस्ताव पेश गर्ने पूरा अवधि दिइएको छ?',
+        questionEn: 'Was the full submission period required by the selected method and current SBD provided?',
+        helpText: 'National/international/quotation periods विधि र हालको नियम/SBD अनुसार पुष्टि गर्नुहोस्; सबैमा एउटै अवधि लागू हुँदैन.',
+      };
+    case 'chk-11':
+      return {
+        ...item,
+        question: 'असामान्य कम दर वा нэмэлт सुरक्षा लागू हुने अवस्थामा लागू नियम/SBD को प्रकाशित formula अनुसार गणना र स्वीकृति छ?',
+        questionEn: 'Where required, was additional security for an abnormally low bid calculated under the applicable rule and bidding document?',
+        legalRef: 'हाल लागू नियम र स्वीकृत SBD/बोलपत्र कागजात',
+        helpText: '१५%/५% जस्ता पुराना निश्चित प्रतिशतलाई सबै खरिदमा सार्वभौम formula नमान्नुहोस्।',
+      };
+    case 'chk-12':
+      return {
+        ...item,
+        question: 'जहाँ लागू हुन्छ, award/LoI सूचना र review अवधि चयनित विधि तथा हाल लागू नियम/SBD अनुसार पूरा गरिएको छ?',
+        questionEn: 'Where applicable, were award/LoI notices and review periods completed under the selected method and current rules?',
+        helpText: 'हरेक खरिद विधिमा एउटै LoI/standstill अवधि लागू हुँदैन; लागू rule र कागजात मिसिलमा राख्नुहोस्।',
+      };
+    case 'chk-15':
+      return {
+        ...item,
+        question: 'करार, स्थानीय नियम वा लागू निर्देशिकाले मागेको अवस्थामा सार्वजनिक परीक्षण र त्यसको अभिलेख पूरा छ?',
+        questionEn: 'Where required by the contract, local rules or applicable directives, was public audit completed and documented?',
+        helpText: 'सार्वजनिक परीक्षणको आवश्यकता आयोजना र लागू निर्देशिकाअनुसार जाँच्नुहोस्; सबै खरिदमा स्वतः अनिवार्य होइन।',
+      };
+    case 'chk-16':
+      return { ...item, helpText: 'रकम-सीमा र सक्षम स्वीकृति ऐन तथा नियमावलीको सम्बन्धित व्यवस्थाअनुसार निर्धारण गर्नुहोस्; लागत अनुमान र खरिद स्वीकृति छुट्टाछुट्टै अभिलेख गर्नुहोस्।' };
+    case 'chk-17':
+      return { ...item, helpText: 'नियम ८५ का वस्तु/कार्य/सेवाअनुसारका सीमा, वार्षिक जम्मा र दरभाउका शर्त लागू गरी खरिद टुक्रेकरण नगर्नुहोस्।' };
+    case 'chk-23':
+      return { ...item, helpText: 'नियम ८८(२) अनुसार लागत अनुमान समिति गठन गरी राशन खरिदका अभिलेख राख्नुहोस्।' };
+    case 'chk-24':
+      return { ...item, helpText: 'घरभाडाको रकम/सूचना नियम ९४ र दैनिक सेवा करारको सीमा/सूचना नियम ९५ अनुसार लागू गर्नुहोस्।' };
+    case 'chk-26':
+      return { ...item, helpText: 'नियम २२(२)–(३) अनुसार design-build/EPC करारमा कम्तीमा पाँच वर्षको त्रुटि-सच्याउने अवधि खुलाउनुहोस्।' };
+    case 'chk-30':
+      return { ...item, helpText: 'EOI तथा roster को रकम र सूचना प्रक्रिया नियम ७० र ७२ अनुसार लागू गर्नुहोस्।' };
+    case 'chk-28':
+      return { ...item, helpText: 'कारणबिना criteria फेरिँदा प्रतिस्पर्धामा असर पर्न सक्छ; संशोधित कागजातको स्वीकृति राख्नुहोस्।' };
+    default:
+      return item;
+  }
+});
+
+const thresholdRule = (
+  methodId: string,
+  type: ThresholdRule['type'],
+  minAmount: number,
+  maxAmount: number,
+  formattedRange: string,
+  applicability: string,
+): ThresholdRule => {
+  const method = PROCUREMENT_METHODS.find((candidate) => candidate.id === methodId);
+  if (!method) throw new Error(`Missing procurement method: ${methodId}`);
+  return {
+    type,
+    method: method.name,
+    minAmount,
+    maxAmount,
+    formattedRange,
+    approvingAuthority: method.approvingAuthority || 'ऐन/नियमावलीअनुसार सक्षम अधिकारी',
+    noticePeriodDays: method.noticePeriod,
+    legalSection: method.legalRef,
+    specialRules: method.specialConditions.join(' '),
+    methodId,
+    applicability,
+    requiredDocuments: method.requiredDocuments,
+  };
+};
+
+export const THRESHOLD_RULES: ThresholdRule[] = [
+  thresholdRule('direct-procurement', 'goods', 0, 1500000, 'रु. १५ लाखसम्म', 'सामान्य मालसामान'),
+  thresholdRule('direct-procurement', 'works', 0, 1500000, 'रु. १५ लाखसम्म', 'सामान्य निर्माण कार्य'),
+  thresholdRule('direct-consulting-other', 'consulting', 0, 500000, 'रु. ५ लाखसम्म', 'परामर्श सेवा'),
+  thresholdRule('direct-consulting-other', 'other', 0, 500000, 'रु. ५ लाखसम्म', 'अन्य सेवा'),
+  thresholdRule('direct-authorized-repair', 'other', 0, 500000, 'रु. ५ लाखसम्म', 'गाडी/मेसिनरीको अधिकृत मर्मत'),
+  thresholdRule('direct-it-maintenance', 'other', 0, 500000, 'रु. ५ लाखसम्म', 'वेबसाइट/सफ्टवेयर/IT मर्मत'),
+  thresholdRule('sealed-quotation', 'goods', 0, 2000000, 'रु. २० लाखसम्म', 'सामान्य मालसामान'),
+  thresholdRule('sealed-quotation', 'works', 0, 2000000, 'रु. २० लाखसम्म', 'सामान्य निर्माण कार्य'),
+  thresholdRule('sealed-quotation', 'other', 0, 2000000, 'रु. २० लाखसम्म', 'सामान्य अन्य सेवा'),
+  thresholdRule('sealed-health', 'goods', 0, 5000000, 'रु. ५० लाखसम्म', 'नियममा सूचीकृत स्वास्थ्य उपकरण/औषधिजन्य वस्तु मात्र'),
+  thresholdRule('open-bidding', 'goods', 2000001, Number.POSITIVE_INFINITY, 'रु. २० लाखभन्दा बढी', 'दफा १५ अनुसार ICB trigger नभएको अवस्थामा'),
+  thresholdRule('open-bidding', 'works', 2000001, Number.POSITIVE_INFINITY, 'रु. २० लाखभन्दा बढी', 'दफा १५ अनुसार ICB trigger नभएको अवस्थामा'),
+  thresholdRule('open-bidding', 'other', 2000001, Number.POSITIVE_INFINITY, 'रु. २० लाखभन्दा बढी', 'सम्बन्धित वस्तु/सेवा र दफा १५ लागू हुने अवस्था जाँच्ने'),
+  thresholdRule('domestic-bidders-works', 'works', 20000001, 5000000000, 'रु. २ करोडभन्दा बढीदेखि रु. ५ अर्बसम्म', 'नियम ३१ङ अनुसार; दफा १५ को अवस्था बाहेक'),
+  thresholdRule('lump-sum-works', 'works', 0, 20000000, 'रु. २ करोडसम्म', 'योग्य, सरल, non-multi-year निर्माण मात्र'),
+  thresholdRule('consumer-committee', 'works', 0, 10000000, 'रु. १ करोडसम्म', 'नियम ९७ का श्रममूलक/लाभग्राही समुदायको योग्य काम'),
+  thresholdRule('marketplace-single', 'goods', 0, 1000000, 'रु. १० लाखसम्म', 'सरकारी e-Marketplace मा योग्य single-source item'),
+  thresholdRule('marketplace-quotations', 'goods', 0, 2000000, 'रु. २० लाखसम्म', 'e-Marketplace को quotation channel'),
+  thresholdRule('marketplace-auction', 'goods', 0, 5000000, 'रु. ५० लाखसम्म', 'e-Marketplace को reverse-auction channel'),
+  thresholdRule('reverse-auction', 'goods', 0, 5000000, 'रु. ५० लाखसम्म', 'PPMO system मा योग्य वस्तु'),
+  thresholdRule('domestic-cottage-industry', 'goods', 0, 2500000, 'रु. २५ लाखसम्म', 'राजपत्रमा तोकिएको घरेलु उद्योग मात्र'),
+  thresholdRule('domestic-pharmaceutical', 'goods', 0, 2500000, 'रु. २५ लाखसम्म', 'योग्य नेपाल-उत्पादित वस्तु/औषधि मात्र'),
+  thresholdRule('consultancy-negotiation', 'consulting', 0, 500000, 'रु. ५ लाखसम्म', 'नियम ८२ मा तोकिएको तालिम/गोष्ठी/सेमिनार'),
+  thresholdRule('consultancy-negotiation', 'consulting', 500001, 2000000, 'रु. ५ लाखभन्दा बढीदेखि रु. २० लाखसम्म', 'नियम ८२(१) अनुसार एक तह माथिको अधिकारीको स्वीकृति'),
+  thresholdRule('consultancy-services', 'consulting', 20000000, 50000000, 'रु. २० लाखदेखि रु. ५० लाखसम्म', 'नियम ७०(१क) अनुसार कम्तीमा सात दिनको EOI सूचना'),
+  thresholdRule('consultancy-services', 'consulting', 50000001, Number.POSITIVE_INFINITY, 'रु. ५० लाखभन्दा बढी', 'नियम ७०(१) अनुसार EOI माग्ने'),
+  thresholdRule('consultancy-services', 'consulting', 150000001, Number.POSITIVE_INFINITY, 'रु. १५ करोडभन्दा बढी', 'नियम ७०(२) अनुसार सामान्यतया अन्तर्राष्ट्रिय EOI'),
+];
+
+export const APPROVAL_AUTHORITY_BANDS: ApprovalAuthorityBand[] = [
+  { level: 'राजपत्रांकित तृतीय श्रेणीको कार्यालय प्रमुख', worksEstimate: 'निर्माण estimate रु. १५ करोडसम्म', goodsServicesEstimate: 'मालसामान/अन्य सेवा estimate रु. २० लाखसम्म', consultingAward: 'परामर्श प्रस्ताव रु. २० लाखसम्म', legalRef: 'नियम १४(१), १४(२), ८१क(१)(क)' },
+  { level: 'राजपत्रांकित द्वितीय श्रेणीको कार्यालय प्रमुख', worksEstimate: 'निर्माण estimate रु. ५० करोडसम्म', goodsServicesEstimate: 'मालसामान/अन्य सेवा estimate रु. ५० लाखसम्म', consultingAward: 'परामर्श प्रस्ताव रु. १ करोडसम्म', legalRef: 'नियम १४(१), १४(२), ८१क(१)(ख)' },
+  { level: 'राजपत्रांकित प्रथम श्रेणीको कार्यालय प्रमुख', worksEstimate: 'निर्माण estimate रु. १ अर्बसम्म', goodsServicesEstimate: 'मालसामान/अन्य सेवा estimate रु. १ करोडसम्म', consultingAward: 'परामर्श प्रस्ताव रु. ५ करोडसम्म', legalRef: 'नियम १४(१), १४(२), ८१क(१)(ग)' },
+  { level: 'विभागीय प्रमुख', worksEstimate: 'निर्माण estimate रु. १ अर्बभन्दा माथि', goodsServicesEstimate: 'मालसामान/अन्य सेवा estimate रु. १ करोडभन्दा माथि', consultingAward: 'परामर्श प्रस्ताव रु. ५ करोडभन्दा माथि', legalRef: 'नियम १४(१), १४(२), ८१क(१)(घ)' },
+  { level: 'संवैधानिक अंग/निकाय, मन्त्रालय वा सचिवालयका सचिव/प्रशासकीय प्रमुख', worksEstimate: 'आफ्नै कार्यालयको खरिदमा कुनै रकमसम्म', goodsServicesEstimate: 'आफ्नै कार्यालयको खरिदमा कुनै रकमसम्म', consultingAward: 'आफ्नै कार्यालयका लागि कुनै रकमसम्म', legalRef: 'नियम १४(४), ८१क(३)' },
+];
+
+export const APPROVAL_AUTHORITY_SPECIAL_CASE = 'संवैधानिक अंग/निकाय, मन्त्रालय, सचिवालय र यस्तै कार्यालयका सचिव वा प्रशासकीय प्रमुखले आफ्नै कार्यालयका लागि कुनै रकमको लागत अनुमान तथा परामर्श प्रस्ताव स्वीकृत गर्न सक्ने व्यवस्था छ (नियम १४(४), ८१क(३))।';
+
+export const CITIZEN_CHARTER_DATA: CitizenCharterItem[] = [
+  {
+    id: 'cc-1',
+    service: 'e-GP प्रणालीमा सार्वजनिक निकाय दर्ता तथा पासवर्ड रिसेट',
+    responsibleOfficer: 'e-GP प्राविधिक शाखा, PPMO',
+    timeframe: 'निवेदन प्राप्त भएको सोही दिन (२ घण्टाभित्र)',
+    fee: 'निःशुल्क',
+    requiredDocuments: ['आधिकारिक पत्र हेडमा कार्यालय प्रमुखको हस्ताक्षर र छाप भएको निवेदन', 'जिम्मेवार अधिकृतको सम्पर्क नम्बर तथा ईमेल'],
+    roomNo: 'कोठा नं. १०४'
+  },
+  {
+    id: 'cc-2',
+    service: 'बोलपत्रदाता / निर्माण व्यवसायी e-GP दर्ता प्रमाणिकरण',
+    responsibleOfficer: 'व्यवसायी प्रमाणीकरण शाखा',
+    timeframe: 'कागजात रुजु भएको १ कार्यदिनभित्र',
+    fee: 'तोकिएको दस्तुर (अनलाइन गेटवे मार्फत)',
+    requiredDocuments: ['कम्पनी/फर्म दर्ता प्रमाणपत्र', 'स्थायी लेखा नम्बर (PAN/VAT) प्रमाणपत्र', 'कर चुक्ता प्रमाणपत्र (चालु आ.व.)'],
+    roomNo: 'कोठा नं. १०५'
+  },
+  {
+    id: 'cc-3',
+    service: 'सार्वजनिक खरिद सम्बन्धी कानूनी परामर्श तथा राय सल्लाह',
+    responsibleOfficer: 'कानून तथा नीति शाखा, PPMO',
+    timeframe: 'पत्र प्राप्त भएको ७ कार्यदिनभित्र',
+    fee: 'निःशुल्क',
+    requiredDocuments: ['सार्वजनिक निकायको आधिकारिक पत्र', 'विवाद वा जिज्ञासाको पृष्ठभूमि र राय मागिएको विषय'],
+    roomNo: 'कोठा नं. २०१'
+  },
+  {
+    id: 'cc-4',
+    service: 'सार्वजनिक खरिद पुनरावलोकन समिति (Review Committee) मा उजुरी दर्ता',
+    responsibleOfficer: 'पुनरावलोकन समिति सचिवालय',
+    timeframe: 'LoI जारी भएको वा निर्णय भएको मितिले ७ दिनभित्र',
+    fee: 'दाखिला धरौटी: कबुल अंकको ०.१५% (न्यूनतम रु. १०,०००)',
+    requiredDocuments: ['पुनरावलोकनका लागि निर्धारित ढाँचाको निवेदन', 'धरौटी जम्मा गरेको बैंक भौचर', 'सार्वजनिक निकायको निर्णय प्रतिलिपि'],
+    roomNo: 'कोठा नं. ३०२'
+  },
+  {
+    id: 'cc-5',
+    service: 'कालोसूची (Blacklisting) सिफारिस दर्ता तथा कारबाही',
+    responsibleOfficer: 'कालोसूची महाशाखा',
+    timeframe: 'सिफारिस प्राप्त भएपछि स्पष्टीकरण म्याद (३० दिन) सहित ६० दिनभित्र',
+    fee: 'निःशुल्क',
+    requiredDocuments: ['सार्वजनिक निकायको सञ्चालक समिति/कार्यालय प्रमुखको निर्णय', 'ठेक्का सम्झौता र तोकिएको चेतावनी पत्रहरूको प्रतिलिपि'],
+    roomNo: 'कोठा नं. २०४'
+  }
+];
+
+export const FREQUENT_QUESTIONS = [
+  {
+    q: 'सार्वजनिक खरिदमा e-GP प्रणाली कुन कुन खरिदका लागि अनिवार्य छ?',
+    a: 'e-GP अनिवार्यता खरिद विधि, रकम र PPMO को हाल लागू निर्देशन/SBD अनुसार जाँच्नुहोस्। रु. २० लाख वा अन्य एउटै trigger सबै निकाय र विधिमा लागू हुन्छ भनेर यो पृष्ठले दाबी गर्दैन।'
+  },
+  {
+    q: 'लागत अनुमान भन्दा निकै कम मूल्य (Abnormally Low Bid) कबुल भएमा के गर्ने?',
+    a: 'असामान्य कम दरमा कारण/क्षमता जाँच गरी थप कार्यसम्पादन जमानत लागू हुन्छ कि हुँदैन र कसरी गणना गर्ने भन्ने कुरा हाल लागू नियम तथा स्वीकृत SBD को formula अनुसार निर्णय र अभिलेख गर्नुहोस्।'
+  },
+  {
+    q: 'आशयको सूचना (Letter of Intent - LoI) किन ७ दिन अनिवार्य दिइन्छ?',
+    a: 'LoI/award notice र review/standstill अवधि चयनित खरिद विधि तथा हाल लागू ऐन, नियम र SBD अनुसार पुष्टि गर्नुहोस्; सबै विधिमा एउटै अवधि लागू नहुन सक्छ।'
+  },
+  {
+    q: 'के उपभोक्ता समितिले जेसिभी वा डोजर जस्ता भारी उपकरण प्रयोग गर्न पाउँछन्?',
+    a: 'समिति विधिको eligibility, heavy equipment/subcontracting, योगदान र approval शर्त हाल लागू नियम ९७, कामको प्रकृति र सम्झौताबाट पुष्टि गर्नुहोस्। पात्रता पुष्टि नगरी सामान्य contractor कामलाई समिति विधिमा नलैजानुहोस्।'
+  },
+  {
+    q: 'सोझै खरिद गर्दा एउटै व्यवसायीबाट पटक-पटक खरिद गर्न पाइन्छ वा पाइँदैन?',
+    a: 'नियम ८५ का उपनियमअनुसार सीमा वस्तु/कार्य/सेवामा फरक हुन सक्छ। आर्थिक वर्षको समान/सम्बन्धित खरिद जोडेर हालको उपसीमा, quotation शर्त र अपवाद प्रमाणित गर्नुहोस्; प्रतिस्पर्धा छल्न खरिद टुक्र्याउन मिल्दैन।'
+  }
+];
+
+export const LEGAL_ACTS_DOWNLOADS = [
+  {
+    title: 'सार्वजनिक खरिद नियमावली, २०६४',
+    type: 'नियमावली',
+    size: '3.3 MB',
+    date: 'कानूनी स्रोत',
+    href: '/sources/procurement_rules.pdf',
+    desc: 'खरिद सीमा, प्रक्रिया र स्वीकृति सम्बन्धी नियमहरूको मूल पाठ।'
+  }
+];

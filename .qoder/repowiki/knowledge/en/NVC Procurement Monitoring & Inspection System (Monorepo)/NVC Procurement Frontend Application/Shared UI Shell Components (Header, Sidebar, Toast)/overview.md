@@ -1,0 +1,1 @@
+Reusable React shell components that render the application header with role switching, the left navigation sidebar with tabbed routing, and a global toast notification system for user feedback.

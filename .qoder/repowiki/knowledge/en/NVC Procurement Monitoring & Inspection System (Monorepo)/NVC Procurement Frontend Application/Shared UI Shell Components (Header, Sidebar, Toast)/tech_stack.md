@@ -1,0 +1,1 @@
+React functional components with TypeScript interfaces; styling via Tailwind CSS utility classes; icons from `lucide-react`; global toast state via React Context API.

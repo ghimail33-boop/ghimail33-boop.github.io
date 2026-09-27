@@ -1,0 +1,1 @@
+React 18 with `react-dom/client` `createRoot`, Tailwind CSS v4 (`@import "tailwindcss"`), and a government-themed dark header using slate color palette.

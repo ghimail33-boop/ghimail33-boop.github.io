@@ -1,0 +1,1 @@
+None beyond standard Vite/React dev server; the app requires a DOM element with id `root` in the HTML host page where `main.tsx` mounts.

@@ -1,0 +1,1 @@
+Single-repo full-stack application that serves a React frontend and an Express API from one Node process, sharing a dual-mode PostgreSQL/PGlite database for the National Vigilance Center procurement inspection workflow.

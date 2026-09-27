@@ -1,0 +1,1 @@
+Bootstraps the React application, mounts the root component tree, and provides the top-level layout with authentication, toast, navigation, and modal orchestration for the NVC procurement system.

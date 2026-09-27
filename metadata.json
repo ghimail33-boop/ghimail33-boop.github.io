@@ -1,0 +1,6 @@
+{
+  "name": "NVC सार्वजनिक खरिद अनुगमन तथा निरीक्षण प्रणाली",
+  "description": "National Vigilance Center (NVC) Nepal - Public Procurement Monitoring & Inspection System for structured compliance, risk tracking, findings, and corrective actions.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

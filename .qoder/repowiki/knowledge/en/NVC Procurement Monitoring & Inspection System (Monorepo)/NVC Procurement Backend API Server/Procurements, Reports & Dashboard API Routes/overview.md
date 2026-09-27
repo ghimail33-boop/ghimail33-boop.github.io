@@ -1,0 +1,1 @@
+Express route handlers exposing CRUD and filtering for procurements, full inspection report generation with CSV export, and dashboard KPI aggregation endpoints.

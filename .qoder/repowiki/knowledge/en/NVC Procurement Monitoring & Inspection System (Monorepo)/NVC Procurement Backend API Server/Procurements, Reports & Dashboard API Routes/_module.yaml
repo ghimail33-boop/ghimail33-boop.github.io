@@ -1,0 +1,10 @@
+schema_version: 1
+module_path: backend_api/procurements_reports
+title: Procurements, Reports & Dashboard API Routes
+scope:
+    - server/routes/procurements.ts
+    - server/routes/reports.ts
+    - server/routes/dashboard.ts
+source_files: []
+depends_on: []
+related_to: []

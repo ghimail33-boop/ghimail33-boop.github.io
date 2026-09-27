@@ -1,0 +1,12 @@
+schema_version: 1
+module_path: backend_api/master_auth_infra
+title: Authentication & Master Data API
+scope:
+    - server/routes/auth.ts
+    - server/routes/master.ts
+    - server/db.ts
+source_files: []
+depends_on: []
+related_to:
+    - path: frontend/app_shell
+    - path: frontend/shared_ui

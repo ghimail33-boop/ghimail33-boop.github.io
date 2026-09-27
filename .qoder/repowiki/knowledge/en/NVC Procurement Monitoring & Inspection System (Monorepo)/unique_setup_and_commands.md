@@ -1,0 +1,1 @@
+`npm run dev` (or `tsx server.ts`) starts the Express server which also runs Vite in middleware mode for hot reload; `npm run build` produces a `dist/` bundle served by the same Express process via `npm start`.

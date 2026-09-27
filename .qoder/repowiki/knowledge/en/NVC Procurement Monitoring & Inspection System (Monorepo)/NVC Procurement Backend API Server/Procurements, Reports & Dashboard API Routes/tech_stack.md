@@ -1,0 +1,1 @@
+Express Router with TypeScript; raw SQL via a custom `../db.ts` query wrapper against PostgreSQL; audit trail via `../utils/audit.ts`; CSV export uses UTF-8 BOM (`\uFEFF`) for Nepali character compatibility in Excel.

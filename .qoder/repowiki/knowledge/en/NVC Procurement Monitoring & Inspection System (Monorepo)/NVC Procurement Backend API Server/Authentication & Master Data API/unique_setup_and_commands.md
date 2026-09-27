@@ -1,0 +1,1 @@
+Database mode is chosen by presence of `DATABASE_URL` or `PGHOST`/`PGDATABASE`; otherwise a persistent PGlite instance is created under `<cwd>/data/pgdata`. On first boot `initDb()` auto-creates `data/` and `uploads/` directories, runs `database/schema.sql`, applies ordered `database/migrations/*.sql` files idempotently, and seeds `database/seed.sql` if tables are fresh.

@@ -1,0 +1,1 @@
+React with TypeScript, Tailwind CSS for styling, and direct `fetch`-based HTTP calls to a REST `/api` backend; no routing library or state-management framework beyond React Context.

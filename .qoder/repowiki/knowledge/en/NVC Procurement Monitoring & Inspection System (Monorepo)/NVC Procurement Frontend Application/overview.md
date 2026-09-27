@@ -1,0 +1,1 @@
+React frontend for the National Vigilance Center procurement inspection system, wiring authentication, tab-based navigation, shared shell UI, domain views, and modals around a centralized API client.

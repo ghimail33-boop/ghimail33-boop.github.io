@@ -1,0 +1,1 @@
+The Toast system requires wrapping the app tree with `<ToastProvider>` before any component can call `useToast()`, otherwise `useToast` throws an error indicating the provider is missing.

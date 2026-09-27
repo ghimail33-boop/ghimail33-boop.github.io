@@ -1,0 +1,4 @@
+- Cross-view shared state (current tab, modals, badge counts) is lifted into `MainApp` and passed down via props or callbacks rather than stored in individual view components.
+- Modal dialogs are controlled by paired boolean state plus an optional payload object/state, with `isOpen` toggled through dedicated handlers that also reset preload data on close.
+- View routing is implemented as a simple string-based tab switch inside `MainApp` instead of a client-side router, with each tab rendering its corresponding view component conditionally.
+- Global providers (`AuthProvider`, `ToastProvider`) wrap the entire application tree in `App.tsx` so every descendant can consume context without prop drilling.

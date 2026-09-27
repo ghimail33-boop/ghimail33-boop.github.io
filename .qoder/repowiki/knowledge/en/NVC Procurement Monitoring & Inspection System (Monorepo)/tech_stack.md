@@ -1,0 +1,1 @@
+Node.js with TypeScript, Express for the API, Vite + React 19 + Tailwind CSS for the SPA, and PostgreSQL via the `pg` driver with an in-process fallback through `@electric-sql/pglite`; JWT-based auth and bcryptjs password hashing are shared across both sides.

@@ -1,0 +1,1 @@
+Evidence uploads require an `uploads/` directory at `process.cwd()/uploads`; the module auto-creates it on startup if missing. File names are generated as `EVD-{timestamp}-{random}{ext}` and persisted paths are stored in `evidence_files.file_path` as `/uploads/{stored_file_name}`.

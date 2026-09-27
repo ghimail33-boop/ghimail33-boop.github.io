@@ -1,0 +1,6 @@
+- Each file creates a local `const router = Router()`, defines route handlers, and ends with `export default router;` for mounting by a parent router.
+- Database queries use parameterized placeholders (`$1`, `$2`, …) built from a `params: any[]` array rather than string concatenation, passed to `query(sql, params)`.
+- Error handling wraps each handler in try/catch that logs the error via `console.error` and returns a JSON `{ error: ... }` response with a Nepali-language message.
+- Mutating routes in `procurements.ts` chain `authenticate` and `requireRole([...])` middleware before the handler body to enforce authorization.
+- After successful CREATE or UPDATE operations, `logAudit` is called with user id, username, action type, entity name, entity id, old/new payloads, and IP address to record an audit trail.
+- CSV export endpoints set `Content-Type: text/csv; charset=utf-8` and `Content-Disposition: attachment` headers and prepend a UTF-8 BOM (`\uFEFF`) so Excel renders Nepali characters correctly.

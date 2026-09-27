@@ -1,0 +1,11 @@
+schema_version: 1
+module_path: frontend/app_shell
+title: Application Shell & Root Entry
+scope:
+    - src/App.tsx
+    - src/main.tsx
+    - src/index.css
+source_files: []
+depends_on: []
+related_to:
+    - path: backend_api/master_auth_infra
