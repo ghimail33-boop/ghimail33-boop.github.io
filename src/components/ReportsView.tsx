@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Inspection } from '../types';
 import { api } from '../services/api';
+import { apiUrl } from '../config';
 import { formatNepaliNumber } from '../utils/numberFormat';
 import {
   FileSpreadsheet,
@@ -76,7 +77,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenReportPrint }) =
             </p>
           </div>
           <a
-            href="/api/reports/export/procurements.csv"
+            href={apiUrl('/api/reports/export/procurements.csv')}
             download
             className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#0f2c4d] hover:bg-[#153e6c] text-white rounded text-xs font-semibold shadow-xs transition shrink-0 cursor-pointer"
           >
@@ -99,7 +100,7 @@ export const ReportsView: React.FC<ReportsViewProps> = ({ onOpenReportPrint }) =
             </p>
           </div>
           <a
-            href="/api/reports/export/findings.csv"
+            href={apiUrl('/api/reports/export/findings.csv')}
             download
             className="flex items-center space-x-1.5 px-3.5 py-2 bg-[#991b1b] hover:bg-[#b91c1c] text-white rounded text-xs font-semibold shadow-xs transition shrink-0 cursor-pointer"
           >

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { apiUrl } from '../../config';
 import { 
   Bot, 
   Send, 
@@ -165,7 +166,7 @@ export const GeminiChatbot: React.FC<GeminiChatbotProps> = ({
           content: m.content,
         }));
 
-      const res = await fetch('/api/gemini/chat', {
+      const res = await fetch(apiUrl('/api/gemini/chat'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
