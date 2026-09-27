@@ -196,7 +196,18 @@ export const api = {
       .select()
       .single();
     if (error) throw new Error(error.message);
-    return data as Procurement;
+    
+    // Automatically create a draft inspection for this procurement
+    const procData = data as Procurement;
+    const inspection_code = `INSP-${procData.procurement_id_code.split('-').slice(-2).join('-')}`;
+    await supabase.from('inspections').insert([{
+      procurement_id: procData.id,
+      inspection_code,
+      inspection_date: new Date().toISOString().split('T')[0],
+      status: 'Draft'
+    }]);
+
+    return procData;
   },
 
   async updateProcurement(id: number, proc: Partial<Procurement>): Promise<Procurement> {
@@ -233,7 +244,7 @@ export const api = {
   },
 
   async getInspections(filters?: Record<string, string | number>): Promise<Inspection[]> {
-    let q = supabase.from('inspections').select('*, procurements(title, procurement_id_code)');
+    let q = supabase.from('inspections').select('*, procurements(title, procurement_id_code, contractor_name, contract_amount, offices(name))');
     if (filters) {
       Object.entries(filters).forEach(([k, v]) => {
         if (v) q = q.eq(k, v);
@@ -243,7 +254,10 @@ export const api = {
     return (data || []).map(d => ({
       ...d,
       procurement_title: d.procurements?.title,
-      procurement_id_code: d.procurements?.procurement_id_code
+      procurement_id_code: d.procurements?.procurement_id_code,
+      office_name: d.procurements?.offices?.name,
+      contractor_name: d.procurements?.contractor_name,
+      contract_amount: d.procurements?.contract_amount
     })) as Inspection[];
   },
 
