@@ -1336,6 +1336,14 @@ export const FREQUENT_QUESTIONS = [
 
 export const LEGAL_ACTS_DOWNLOADS = [
   {
+    title: 'सार्वजनिक खरिद ऐन, २०६३',
+    type: 'ऐन',
+    size: '1.8 MB',
+    date: 'कानूनी स्रोत',
+    href: '/sources/procurement_act.pdf',
+    desc: 'सार्वजनिक खरिदको आधारभूत कानूनी व्यवस्था, अधिकार, दायित्व र प्रक्रियागत मापदण्ड।'
+  },
+  {
     title: 'सार्वजनिक खरिद नियमावली, २०६४',
     type: 'नियमावली',
     size: '3.3 MB',
