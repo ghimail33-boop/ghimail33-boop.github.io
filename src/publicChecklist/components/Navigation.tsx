@@ -134,7 +134,7 @@ export const Navigation: React.FC<NavigationProps> = ({
             <div className={`${compact ? 'xl:hidden' : 'lg:hidden'} flex items-center`}>
               <button
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded bg-blue-700 hover:bg-blue-600 text-white focus:outline-none"
+                className="p-1 rounded bg-blue-700 hover:bg-blue-600 text-white focus:outline-none"
                 aria-label="Toggle Navigation Menu"
               >
                 {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
