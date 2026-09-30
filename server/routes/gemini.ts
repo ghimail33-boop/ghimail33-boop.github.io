@@ -30,6 +30,16 @@ function buildLocalFallbackReply(prompt: string, context?: string) {
   const normalizedPrompt = prompt.toLowerCase();
   const stageContext = context ? `\n\nसन्दर्भ: ${context}` : '';
 
+  if (prompt.includes('सम्बन्धित स्रोत-अंश:')) {
+    const sourceExcerpt = prompt
+      .split('सम्बन्धित स्रोत-अंश:')[1]
+      ?.split('\n\nलागू संशोधनसहितको')[0]
+      ?.trim();
+    if (sourceExcerpt && !sourceExcerpt.includes('अहिले चयन गरिएको सारांश उपलब्ध छैन')) {
+      return `**संलग्न राय/निर्णय सन्दर्भ**\n${sourceExcerpt}\n\nयो स्रोतमा उल्लिखित तथ्यविशेषको सार हो; हाल लागू ऐन, नियमावली र खरिद कागजातसँग मिलाएर मात्र निर्णय गर्नुहोस्।${stageContext}`;
+    }
+  }
+
   if (normalizedPrompt.includes('धरौटी') || normalizedPrompt.includes('performance security') || normalizedPrompt.includes('bid security')) {
     return `**धरौटी / जमानत**\n- बिड सेक्युरिटी सामान्यतया **२–३%** को दरमा रहने र बोलीदाता/प्रदायकको बोलीद्वारा निर्धारण हुने मानदण्डमा आधारित हुन्छ।\n- Performance Security / कार्यसम्पादन जमानत सामान्यतया **५%** हुन सक्छ।\n- यदि कार्यमूल्य वा प्राविधिक जोखिम बढी छ भने अधिक सुरक्षा माग गर्न सकिन्छ।${stageContext}`;
   }

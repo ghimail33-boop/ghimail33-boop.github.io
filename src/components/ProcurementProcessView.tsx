@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { HomeDashboardView } from '../publicChecklist/components/HomeDashboardView';
 import { ProcurementStagesView } from '../publicChecklist/components/ProcurementStagesView';
+import { ProcurementGuidanceView } from '../publicChecklist/components/ProcurementGuidanceView';
 import { ProcurementMethodsView } from '../publicChecklist/components/ProcurementMethodsView';
 import { ComplianceChecklistView } from '../publicChecklist/components/ComplianceChecklistView';
 import { ThresholdCalculatorView } from '../publicChecklist/components/ThresholdCalculatorView';
@@ -103,6 +104,10 @@ export const ProcurementProcessView: React.FC = () => {
             onSelectStage={setSelectedStageId}
             onOpenChecklistForStage={handleOpenChecklistForStage}
           />
+        )}
+
+        {currentTab === 'guidance' && (
+          <ProcurementGuidanceView language={language} onAskAi={handleAskAi} />
         )}
 
         {currentTab === 'methods' && (

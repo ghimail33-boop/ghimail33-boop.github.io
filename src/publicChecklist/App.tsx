@@ -5,6 +5,7 @@ import { SidebarQuickNav } from './components/SidebarQuickNav';
 import { SearchModal } from './components/SearchModal';
 import { HomeDashboardView } from './components/HomeDashboardView';
 import { ProcurementStagesView } from './components/ProcurementStagesView';
+import { ProcurementGuidanceView } from './components/ProcurementGuidanceView';
 import { ProcurementMethodsView } from './components/ProcurementMethodsView';
 import { ComplianceChecklistView } from './components/ComplianceChecklistView';
 import { ThresholdCalculatorView } from './components/ThresholdCalculatorView';
@@ -114,6 +115,10 @@ export default function App() {
             onSelectStage={setSelectedStageId}
             onOpenChecklistForStage={handleOpenChecklistForStage}
           />
+        )}
+
+        {currentTab === 'guidance' && (
+          <ProcurementGuidanceView language={language} onAskAi={handleAskAi} />
         )}
 
         {currentTab === 'methods' && (
