@@ -20,8 +20,8 @@ type GuideTab = 'search' | 'stage' | 'advice' | 'pprc' | 'references' | 'about';
 const GUIDE_TABS: Array<{ id: GuideTab; label: string }> = [
   { id: 'search', label: 'समस्या खोज' },
   { id: 'stage', label: 'चरण अनुसार' },
-  { id: 'advice', label: 'कानुनी परामर्श' },
-  { id: 'pprc', label: 'समिति निर्णय' },
+  { id: 'advice', label: 'PPMO राय' },
+  { id: 'pprc', label: 'PPRC निर्णय' },
   { id: 'references', label: 'दफा / नियम' },
   { id: 'about', label: 'स्रोत र सीमा' }
 ];
@@ -243,7 +243,7 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
           <p className="mt-1 max-w-4xl text-xs leading-relaxed text-slate-600">खरिद चरण छान्नुहोस्, समस्या खोज्नुहोस् वा खरिदको अवस्थाबारे परामर्श लिनुहोस्। राय र समितिका निर्णयका मूल विवरण यही पृष्ठमा पढ्न सकिन्छ।</p>
           <div className="mt-2 flex flex-wrap gap-2 text-[11px] font-semibold">
             <span className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-[#185294]">{data.opinions.length} PPMO राय</span>
-            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">{data.decisions.length} पुनरावलोकन निर्णय</span>
+            <span className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-800">{data.decisions.length} PPRC निर्णय</span>
             <span className="rounded border border-amber-200 bg-amber-50 px-2 py-1 text-amber-900">{GUIDE_STAGES.length} खरिद चरण</span>
           </div>
         </div>
@@ -290,7 +290,7 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
               <div className="border-l-4 border-amber-400 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-950"><strong>व्यावहारिक सावधानी:</strong> {GUIDE_STAGES.find((stage) => stage.id === selectedStage)?.tip}</div>
               <h3 className="text-sm font-bold text-slate-900">{stageName(selectedStage)}: राय परामर्श ({stageOpinions.length})</h3>
               {stageOpinions.slice(0, 25).map((record, index) => <OpinionCard key={`stage-op-${record.src}-${record.no}-${index}`} record={record} />)}
-              <h3 className="pt-2 text-sm font-bold text-slate-900">यस चरणसँग मिल्ने समिति निर्णय ({stageDecisions.length})</h3>
+              <h3 className="pt-2 text-sm font-bold text-slate-900">यस चरणसँग मिल्ने PPRC समिति निर्णय ({stageDecisions.length})</h3>
               {stageDecisions.slice(0, 15).map((record, index) => <DecisionCard key={`stage-pp-${record.no}-${index}`} record={record} />)}
               {!stageOpinions.length && !stageDecisions.length && <p className="border border-dashed border-slate-300 bg-white p-4 text-xs text-slate-600">शब्दावलीमा आधारित वर्गीकरणबाट यो चरणमा मिलेको अभिलेख भेटिएन। सबै अभिलेख समस्या खोजबाट हेर्नुहोस्।</p>}
             </section>
@@ -360,20 +360,20 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
       {activeTab === 'about' && (
         <section className="space-y-3 border border-slate-200 bg-white p-4 text-sm leading-relaxed text-slate-700">
           <h3 className="flex items-center gap-2 font-bold text-slate-900"><Landmark className="h-4 w-4 text-[#1b64b5]" />स्रोत र प्रयोगको सीमा</h3>
-          <p>यो पृष्ठमा procurement_guide.html मा समावेश सार्वजनिक खरिद अनुगमन कार्यालयका ८४८ राय परामर्श अंश र सार्वजनिक खरिद पुनरावलोकन समितिका २२१ निर्णय खोज्न र चरणअनुसार छान्न मिल्छ। अभिलेख यही एपसँगै रहेको structured dataबाट लोड हुन्छ; अलग PDF वा docs folder चाहिँदैन।</p>
+          <p>यो पृष्ठमा procurement_guide.html मा समावेश सार्वजनिक खरिद अनुगमन कार्यालयका ८४८ राय परामर्श अंश र सार्वजनिक खरिद पुनरावलोकन समितिका २२१ निर्णय खोज्न र चरणअनुसार छान्न मिल्छ।</p>
           <ul className="list-disc space-y-1 pl-5 text-xs">
             <li>राय तथा निर्णयको मूल तथ्य र निष्कर्ष संक्षिप्त/युनिकोड रूपान्तरण गरिएका सामग्रीबाट आएका हुन्; पुराना पाठमा टाइप वा रूपान्तरण त्रुटि हुन सक्छ।</li>
             <li>चरण वर्गीकरण विषयका शब्दसँग मिलाएर गरिएको हो; एउटै अभिलेख एकभन्दा बढी चरणमा देखिन सक्छ वा छुट्न सक्छ।</li>
-            <li>दफा/नियम सूची अभिलेखमा उल्लेख भएका सन्दर्भबाट निकालिएको हो, हालको संशोधित ऐन/नियमावलीको पूर्ण पाठ होइन।</li>
-            <li>राय/निर्णय तथ्यविशेषमा आधारित छन्; लागू संशोधन, बोलपत्र कागजात र आफ्नो मिसिलसँग मिलाएर मात्र निर्णय गर्नुहोस्।</li>
+            <li>राय/निर्णय सूची PPMO को अभिलेखमा उल्लेख भएका सन्दर्भबाट निकालिएको हो, हालको संशोधित ऐन/नियमावलीको पूर्ण पाठ होइन।</li>
+            <li>राय/निर्णय तथ्यविशेषमा आधारित छन्; कानूनमा भएका संशोधन, बोलपत्र कागजात र आफ्नो मिसिलसँग मिलाएर मात्र निर्णय गर्नुहोस्।</li>
           </ul>
         </section>
       )}
 
-      <footer className="flex items-center gap-2 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
+      {/* <footer className="flex items-center gap-2 border-t border-slate-200 pt-2 text-[11px] text-slate-500">
         <BookOpen className="h-3.5 w-3.5 text-[#1b64b5]" />
         {language === 'ne' ? 'स्रोत: procurement_guide.html मा संकलित PPMO राय तथा PPRC निर्णय' : 'Source: compiled PPMO opinions and PPRC decisions in procurement_guide.html'}
-      </footer>
+      </footer> */}
     </div>
   );
 };
