@@ -115,7 +115,7 @@ export const Navigation: React.FC<NavigationProps> = ({
                   <button
                     key={item.id}
                     onClick={() => handleSelectTab(item.id)}
-                    className={`relative flex items-center ${compact ? 'gap-4 px-1 py-0.5 text-[11px] whitespace-nowrap rounded-md border' : 'gap-1.5 px-3 py-1 text-sm rounded-t border-b-1'} font-semibold transition-all cursor-pointer h-full shrink-0 ${
+                    className={`relative flex items-center ${compact ? 'gap-4 px-1 py-3 text-[11px] whitespace-nowrap rounded-md border' : 'gap-1.5 px-3 py-1 text-sm rounded-t border-b-1'} font-semibold transition-all cursor-pointer h-4 shrink-0 ${
                       isActive
                         ? 'bg-[#144e8c] text-white border-amber-300 font-bold'
                         : compact

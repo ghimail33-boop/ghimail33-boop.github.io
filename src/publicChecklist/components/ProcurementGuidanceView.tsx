@@ -100,9 +100,14 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
   const stageDecisions = selectedStage ? data?.decisions.filter((item) => item.stageIds.includes(selectedStage)) || [] : [];
 
   const adviceMatches = useMemo(() => {
-    if (!data || !adviceText) return { opinions: [], decisions: [] };
-    let opinions = rankGuideRecords(data.opinions, adviceText);
-    let decisions = rankGuideRecords(data.decisions, adviceText);
+    if (!data) return { opinions: [], decisions: [] };
+    const query = adviceText.trim();
+    let opinions = query
+      ? rankGuideRecords(data.opinions, query)
+      : adviceStage ? data.opinions : [];
+    let decisions = query
+      ? rankGuideRecords(data.decisions, query)
+      : adviceStage ? data.decisions : [];
     if (adviceStage) {
       opinions = opinions.filter((item) => item.stageIds.includes(adviceStage));
       decisions = decisions.filter((item) => item.stageIds.includes(adviceStage));
@@ -308,7 +313,7 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
               <button type="button" onClick={submitAdvice} disabled={adviceText.trim().length < 8} className="inline-flex items-center gap-2 rounded bg-[#1b64b5] px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"><Sparkles className="h-4 w-4 text-amber-300" />स्रोतसहित परामर्श लिनुहोस्</button>
             </div>
           </section>
-          {adviceText.trim().length >= 8 && (
+          {(adviceText.trim() || adviceStage) && (
             <section className="space-y-3">
               {(adviceStage ? [adviceStage] : GUIDE_STAGES.filter((stage) => stage.keywords.some((keyword) => adviceText.toLocaleLowerCase().includes(keyword.toLocaleLowerCase()))).slice(0, 2).map((stage) => stage.id)).map((id) => <div key={id} className="border-l-4 border-[#1b64b5] bg-blue-50 px-3 py-2 text-xs"><strong>सम्भावित चरण:</strong> {stageName(id)} <span className="text-slate-600">• {GUIDE_STAGES.find((stage) => stage.id === id)?.tip}</span></div>)}
               <p className="text-xs text-slate-600">सबैभन्दा मिल्दा अभिलेखका आधारमा Gemini सहायकलाई प्रश्न पठाइन्छ। तलका नतिजा मिलानका लागि मात्र हुन्, कानुनी निष्कर्ष होइनन्।</p>
@@ -316,6 +321,7 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
               {adviceMatches.opinions.slice(0, 5).map((record, index) => <OpinionCard key={`advice-op-${record.src}-${record.no}-${index}`} record={record} />)}
               <h3 className="text-sm font-bold">मिल्दा पुनरावलोकन निर्णय ({adviceMatches.decisions.length})</h3>
               {adviceMatches.decisions.slice(0, 5).map((record, index) => <DecisionCard key={`advice-pp-${record.no}-${index}`} record={record} />)}
+              {!adviceMatches.opinions.length && !adviceMatches.decisions.length && <p className="border border-dashed border-slate-300 bg-white p-4 text-xs text-slate-600">यो शब्द वा चरणसँग मिल्दो राय/निर्णय भेटिएन। अर्को शब्द प्रयोग गर्नुहोस् वा चरण filter बदल्नुहोस्।</p>}
             </section>
           )}
           <div className="flex items-start gap-2 border border-amber-200 bg-amber-50 p-3 text-xs leading-relaxed text-amber-950"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" /><p>पुराना राय/निर्णय तथ्यविशेषमा आधारित हुन्छन्। उत्तरलाई हाल लागू संशोधन, बोलपत्र कागजात र खरिदको अभिलेखसँग जाँच्नुहोस्; PPMO रायलाई कुनै खास बोलपत्र स्वीकार्ने/अस्वीकार्ने अन्तिम निर्णय नमान्नुहोस्।</p></div>
