@@ -6,6 +6,7 @@ import {
   CheckCircle2, 
   AlertTriangle, 
   Lightbulb, 
+  ListOrdered,
   ArrowLeft, 
   ArrowRight,
   ShieldCheck
@@ -161,6 +162,28 @@ export const ProcurementStagesView: React.FC<ProcurementStagesViewProps> = ({
 
         {/* Content Body Grid */}
         <div className="p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6 bg-white">
+          <section className="md:col-span-2 rounded-lg border border-blue-200 bg-blue-50/50 p-4 space-y-3">
+            <div className="flex items-center gap-2 border-b border-blue-200 pb-2">
+              <ListOrdered className="w-5 h-5 text-[#1b64b5]" />
+              <h4 className="font-bold text-slate-900 text-sm">
+                {language === 'ne' ? 'यस चरणमा अपनाउने कार्यविधि' : 'Procedure to Follow in This Stage'}
+              </h4>
+            </div>
+            <ol className="space-y-2 text-xs sm:text-sm text-slate-700">
+              {currentStage.procedureSteps.map((step, idx) => (
+                <li key={idx} className="flex items-start gap-3">
+                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[#1b64b5] text-xs font-bold text-white">
+                    {idx + 1}
+                  </span>
+                  <span className="pt-0.5 leading-relaxed">{step}</span>
+                </li>
+              ))}
+            </ol>
+            <p className="border-t border-blue-200 pt-2 text-xs leading-relaxed text-blue-950">
+              रकमको सीमा, अवधि, स्वीकृति दिने अधिकारी, जमानत र विधि-विशेषका शर्त सम्बन्धित खरिदको प्रकृति तथा लागू संशोधित नियमावली र मानक कागजातबाट यकिन गर्नुहोस्।
+            </p>
+          </section>
+
           {/* 1. Key Responsibilities */}
           <section className="space-y-3">
             <div className="flex items-center gap-2 pb-2 border-b border-slate-200">

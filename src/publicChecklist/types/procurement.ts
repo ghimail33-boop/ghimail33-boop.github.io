@@ -9,6 +9,7 @@ export interface ProcurementStage {
   shortDescEn: string;
   legalBasis: string;
   timeLimit: string;
+  procedureSteps: string[];
   keyResponsibilities: string[];
   mandatoryDocuments: string[];
   checkpoints: string[];
