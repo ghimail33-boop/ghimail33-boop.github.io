@@ -24,8 +24,11 @@ export const ProcurementMethodsView: React.FC<ProcurementMethodsViewProps> = ({
       m.description,
       m.thresholdLimit,
       m.legalRef,
+      m.nameEn,
+      ...m.steps,
       ...(m.requiredDocuments || []),
       ...(m.evaluationProcess || []),
+      ...m.specialConditions,
     ].some((value) => value.toLowerCase().includes(query));
     return matchesCategory && matchesSearch;
   });
@@ -49,10 +52,15 @@ export const ProcurementMethodsView: React.FC<ProcurementMethodsViewProps> = ({
 
   return (
     <div className="space-y-3">
-      {/* <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
+      <div className="flex items-start gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-950">
         <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" />
-        <p>{PROCUREMENT_SOURCE_NOTE}</p>
-      </div> */}
+        <div>
+          <p className="font-bold">{PROCUREMENT_SOURCE_NOTE}</p>
+          <p className="mt-0.5">
+            विधि छनोट गर्नुअघि सम्बन्धित नियमको हाल लागू संशोधन, PPMO का निर्देशन/मानक कागजात, स्वीकृत बजेट र अधिकार सीमा पुष्टि गर्नुहोस्।
+          </p>
+        </div>
+      </div>
       {/* Top Banner */}
       <div className="bg-white px-5 py-2.5 rounded-lg border border-slate-200 shadow-xs flex items-center justify-between gap-4">
         <div>
@@ -69,7 +77,7 @@ export const ProcurementMethodsView: React.FC<ProcurementMethodsViewProps> = ({
           </h3>
           <p className="text-slate-600 text-sm mt-0.5">
             {language === 'ne'
-              ? 'रकमको सीमा, कार्यको प्रकृति र प्रतिस्पर्धाको आवश्यकता अनुसार छनोट गरिने कानुनी विधिहरू।'
+              ? 'हरेक विधिको कानुनी आधार, लागू हुने अवस्था, चरणबद्ध कार्यविधि, मूल्याङ्कन, आवश्यक कागजात र विशेष शर्त हेर्न विधि छान्नुहोस्।'
               : 'Statutory methods categorized by monetary threshold, nature of works, and competitive rigor for public entities.'}
           </p>
         </div>
@@ -191,15 +199,18 @@ export const ProcurementMethodsView: React.FC<ProcurementMethodsViewProps> = ({
           <div>
             <h4 className="font-bold text-slate-900 text-sm mb-3 flex items-center gap-2">
               <FileCheck className="w-4 h-4 text-[#1b64b5]" />
-              <span>प्रक्रियागत चरणहरू (Sequential Procedures)</span>
+              <span>चरणबद्ध कार्यविधि (नियमअनुसार क्रमशः पूरा गर्ने)</span>
             </h4>
+            <p className="mb-3 text-xs leading-relaxed text-slate-600">
+              {activeMethod.steps.length} चरण: आवश्यकता र स्वीकृतिबाट सुरु गरी प्रतिस्पर्धा/छनोट, सम्झौता र कामको जाँचसम्मको क्रम।
+            </p>
             <div className="space-y-2">
               {activeMethod.steps.map((step, idx) => (
-                <div key={idx} className="flex items-start gap-3 bg-slate-50 p-2.5 rounded border border-slate-100 text-xs sm:text-sm text-slate-800">
-                  <span className="w-6 h-6 rounded-full bg-[#1b64b5] text-white font-bold flex items-center justify-center shrink-0 text-xs">
+                <div key={idx} className="flex items-start gap-3 rounded-lg border border-blue-100 bg-blue-50/40 p-3 text-xs leading-relaxed text-slate-800 sm:text-sm">
+                  <span className="grid h-7 min-w-7 place-items-center rounded-full bg-[#1b64b5] px-1 font-bold text-white">
                     {idx + 1}
                   </span>
-                  <span className="pt-0.5">{step}</span>
+                  <p className="pt-0.5">{step}</p>
                 </div>
               ))}
             </div>
