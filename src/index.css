@@ -15,6 +15,10 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  .procurement-guidance {
+    font-family: 'Inter', 'Mukta', 'Noto Sans Devanagari', 'Nirmala UI', 'Mangal', sans-serif;
+  }
+
   /* Strict tabular numbers across data tables, metrics, codes, amounts */
   .tabular-nums,
   table,

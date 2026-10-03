@@ -78,7 +78,8 @@ export const extractGuideReferences = (text: string): string[] => {
   return [...references];
 };
 
-const getStageIds = (subject: string, text: string): string[] => GUIDE_STAGES
+const getStageIds = (subject: string, text: string): string[] => {
+  const stageIds = GUIDE_STAGES
   .map((stage) => {
     let score = 0;
     for (const keyword of stage.keywords) {
@@ -91,6 +92,8 @@ const getStageIds = (subject: string, text: string): string[] => GUIDE_STAGES
   .sort((first, second) => second.score - first.score)
   .slice(0, 2)
   .map((stage) => stage.id);
+  return stageIds.length ? stageIds : ['eval'];
+};
 
 export const prepareGuideData = (payload: GuideDataPayload) => ({
   opinions: payload.ops.map((record): GuideOpinion => {

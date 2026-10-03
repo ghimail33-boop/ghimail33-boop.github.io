@@ -240,7 +240,7 @@ export const ProcurementGuidanceView: React.FC<ProcurementGuidanceViewProps> = (
   }
 
   return (
-    <div className="space-y-3 text-slate-800">
+    <div className="procurement-guidance space-y-3 text-slate-800">
       <section className="flex flex-wrap items-start justify-between gap-3 border-b border-slate-200 pb-3">
         <div>
           <p className="text-xs font-bold uppercase text-[#185294]">खरिद निर्णय सहायता</p>
