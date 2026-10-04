@@ -55,7 +55,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView }) => {
               />
             </div>
             <div>
-              <div className="flex items-center space-x-2">
+              <div className="flex items-center space-x-2 whitespace-nowrap">
                 <span className="text-xs font-bold tracking-wide text-slate-800 uppercase">
                   राष्ट्रिय सतर्कता केन्द्र
                 </span>
@@ -63,7 +63,7 @@ export const Header: React.FC<HeaderProps> = ({ activeView }) => {
                   NVC-PPCA
                 </span>
               </div>
-              <h1 className="text-sm sm:text-base font-bold text-[#0f2c4d] tracking-tight leading-tight">
+              <h1 className="text-sm sm:text-base font-bold text-[#0f2c4d] tracking-tight leading-tight whitespace-nowrap">
                 खरिद विधि परिपालना सहयोगी
               </h1>
             </div>
